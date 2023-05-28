@@ -1,8 +1,11 @@
 use ai::aimanager::set_key;
 use codeassistant::codeassist::assist_create_code;
-use reqwest::Client;
 
-use crate::{filemanager::{configloader::{save_config, load_config}, fileloader::{create_file_python}}, clicommands::{commandparser::CommandDirectory, commands::ping}, ai::aimanager::get_prompt_by_model};
+use crate::{
+    filemanager::{configloader::{save_config, load_config}, 
+    fileloader::{create_file_python}},
+     clicommands::{commandparser::CommandDirectory, commands::ping},
+};
 
 mod filemanager{
     pub mod configloader;
@@ -28,6 +31,15 @@ mod ai {
 
 mod codeassistant {
     pub mod codeassist;
+    pub mod dependencies {
+        pub mod dependencychecker;
+        pub mod dependants {
+            pub mod python {
+                pub mod mypy;
+                pub mod pip;
+            }
+        }
+    }
 }
 
 #[tokio::main]
@@ -47,9 +59,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     command_directory.parse_args(&args);
 
     assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::Python).await?;
-    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::Rust).await?;
-    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CPlusPlus).await?;
-    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CSharp).await?;
+    //assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::Rust).await?;
+    //assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CPlusPlus).await?;
+    //assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CSharp).await?;
 
     Ok(())
 }

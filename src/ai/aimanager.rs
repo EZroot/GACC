@@ -43,6 +43,6 @@ pub async fn get_prompt_by_model(
             model_response = chat_davinci(&client, &key , prompt).await.unwrap();
         }
     }
-    println!("Model request finished.");
+    println!("Model request finished. {} : {}",model_response.0, model_response.1);
     Ok(model_response)
 }

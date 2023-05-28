@@ -3,35 +3,35 @@ use tokio::fs;
 use tokio::fs::File;
 use tokio::io::{self, AsyncWriteExt};
 
-pub async fn create_file_python(body: &str) -> std::io::Result<()>{
+pub async fn create_file_python(body: &str) -> std::io::Result<String>{
     let file_name = "test_file";
     let file_suffex = ".py";
-    create_file(body, file_name, file_suffex).await?;
-    Ok(())
+    let file_path = create_file(body, file_name, file_suffex).await?;
+    Ok(file_path)
 }
 
-pub async fn create_file_rust(body: &str) -> std::io::Result<()>{
+pub async fn create_file_rust(body: &str) -> std::io::Result<String>{
     let file_name = "test_file";
     let file_suffex = ".rs";
-    create_file(body, file_name, file_suffex).await?;
-    Ok(())
+    let file_path = create_file(body, file_name, file_suffex).await?;
+    Ok(file_path)
 }
 
-pub async fn create_file_csharp(body: &str) -> std::io::Result<()>{
+pub async fn create_file_csharp(body: &str) -> std::io::Result<String>{
     let file_name = "test_file";
     let file_suffex = ".cs";
-    create_file(body, file_name, file_suffex).await?;
-    Ok(())
+    let file_path = create_file(body, file_name, file_suffex).await?;
+    Ok(file_path)
 }
 
-pub async fn create_file_cplusplus(body: &str) -> std::io::Result<()>{
+pub async fn create_file_cplusplus(body: &str) -> std::io::Result<String>{
     let file_name = "test_file";
     let file_suffex = ".cpp";
-    create_file(body, file_name, file_suffex).await?;
-    Ok(())
+    let file_path = create_file(body, file_name, file_suffex).await?;
+    Ok(file_path)
 }
 
-async fn create_file(body: &str, file_name: &str, file_suffix: &str) -> std::io::Result<()> {
+async fn create_file(body: &str, file_name: &str, file_suffix: &str) -> std::io::Result<String> {
     let file_path = format!("{}{}", file_name, file_suffix);
 
     // Open the file asynchronously
@@ -41,7 +41,7 @@ async fn create_file(body: &str, file_name: &str, file_suffix: &str) -> std::io:
     file.write_all(body.as_bytes()).await?;
 
     println!("Created: {}", file_path);
-    Ok(())
+    Ok(file_path)
 }
 
 async fn load_file(file_path: &str) -> Result<String, std::io::Error> {
