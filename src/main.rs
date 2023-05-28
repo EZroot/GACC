@@ -1,7 +1,8 @@
 use ai::aimanager::set_key;
+use codeassistant::codeassist::assist_create_code;
 use reqwest::Client;
 
-use crate::{filemanager::configloader::{save_config, load_config}, clicommands::{commandparser::CommandDirectory, commands::ping}, ai::aimanager::get_prompt_by_model};
+use crate::{filemanager::{configloader::{save_config, load_config}, fileloader::{create_file_python}}, clicommands::{commandparser::CommandDirectory, commands::ping}, ai::aimanager::get_prompt_by_model};
 
 mod filemanager{
     pub mod configloader;
@@ -25,6 +26,10 @@ mod ai {
     }
 }
 
+mod codeassistant {
+    pub mod codeassist;
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let key = "token";
@@ -41,11 +46,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     command_directory.parse_args(&args);
 
-    let (success_status, gpt_response) = get_prompt_by_model("Write hello world in python".to_string(), ai::aimanager::AIModelType::DavinciModel).await?;
-    println!("Status: {} Response: {}", success_status, gpt_response);
-    println!("---DAVINCI ^ ------------------------------------------------------------------------ GPT v --------------------------");
-    let (success_status, gpt_response) = get_prompt_by_model("Write hello world in python".to_string(), ai::aimanager::AIModelType::GptModel).await?;
-    println!("Status: {} Response: {}", success_status, gpt_response);
+    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::Python).await?;
+    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::Rust).await?;
+    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CPlusPlus).await?;
+    assist_create_code("A server with the endpoint at /derp that displays a response 'hello nerd' in json", codeassistant::codeassist::CodeType::CSharp).await?;
 
     Ok(())
 }

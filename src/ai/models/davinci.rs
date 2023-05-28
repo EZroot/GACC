@@ -33,7 +33,7 @@ pub async fn chat_davinci(client: &reqwest::Client, api_key: &str, prompt: Strin
         model: String::from("text-davinci-003"),
         prompt,
         temperature: 0.0,
-        max_tokens: 60,
+        max_tokens: 3000,
         top_p: 1.0,
         frequency_penalty: 0.0,
         presence_penalty: 0.0,
@@ -49,7 +49,6 @@ pub async fn chat_davinci(client: &reqwest::Client, api_key: &str, prompt: Strin
     // Check if there are any errors during the request
     if response.status().is_success() {
         let response_body = response.text().await?;
-        println!("res {}", response_body);
         let res: ChatResponse = serde_json::from_str(&response_body).unwrap();
 
         if let Some(choice) = res.choices.first() {
