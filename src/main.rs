@@ -1,9 +1,11 @@
+use ai::aimanager::set_key;
 use reqwest::Client;
 
-use crate::{config::configloader::{save_config, load_config}, clicommands::{commandparser::CommandDirectory, commands::ping}, ai::models::gpt::{chat_gpt, set_key}};
+use crate::{filemanager::configloader::{save_config, load_config}, clicommands::{commandparser::CommandDirectory, commands::ping}, ai::aimanager::get_prompt_by_model};
 
-mod config{
+mod filemanager{
     pub mod configloader;
+    pub mod fileloader;
 }
 
 mod clicommands {
@@ -15,8 +17,11 @@ mod clicommands {
 }
 
 mod ai {
+    pub mod aimanager;
+    
     pub mod models {
         pub mod gpt;
+        pub mod davinci;
     }
 }
 
@@ -36,16 +41,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     command_directory.parse_args(&args);
 
-
-    //Gpt test
-    let client = Client::new();
-
-    // Call the chat_gpt function
-    let system_content = "System content".to_string();
-    let prompt = "User prompt".to_string();
-
-    let (success_status, gpt_response) = chat_gpt(&client, system_content, prompt).await.unwrap();
+    let (success_status, gpt_response) = get_prompt_by_model("Write hello world in python".to_string(), ai::aimanager::AIModelType::DavinciModel).await?;
     println!("Status: {} Response: {}", success_status, gpt_response);
-    
+    println!("---DAVINCI ^ ------------------------------------------------------------------------ GPT v --------------------------");
+    let (success_status, gpt_response) = get_prompt_by_model("Write hello world in python".to_string(), ai::aimanager::AIModelType::GptModel).await?;
+    println!("Status: {} Response: {}", success_status, gpt_response);
+
     Ok(())
 }

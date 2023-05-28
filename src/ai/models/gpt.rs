@@ -24,9 +24,7 @@ struct Choice {
     message: Message,
 }
 
-static mut API_KEY: Option<String> = None;
-
-pub async fn chat_gpt(client: &reqwest::Client, system_content: String, prompt: String) -> Result<(bool, String), reqwest::Error> {
+pub async fn chat_gpt(client: &reqwest::Client, api_key : &str, system_content: String, prompt: String) -> Result<(bool, String), reqwest::Error> {
     let prompt = RequestBody {
         model: String::from("gpt-3.5-turbo"),
         messages: vec![
@@ -39,7 +37,7 @@ pub async fn chat_gpt(client: &reqwest::Client, system_content: String, prompt: 
     };
 
     let response = client.post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}",get_api_key().unwrap()))
+        .header("Authorization", format!("Bearer {}",api_key))
         .header("Content-Type", "application/json")
         .body(serde_json::to_string(&prompt).unwrap())
         .send()
@@ -48,7 +46,6 @@ pub async fn chat_gpt(client: &reqwest::Client, system_content: String, prompt: 
     // Check if there are any errors during the request
     if response.status().is_success() {
         let response_body = response.text().await?;
-        println!("Response Body: {}", response_body);
         let res: ChatResponse = serde_json::from_str(&response_body).unwrap();
 
         let reply = &res.choices[0].message.content;
@@ -62,12 +59,3 @@ pub async fn chat_gpt(client: &reqwest::Client, system_content: String, prompt: 
     }
 }
 
-pub fn set_key(api_key: &str) {
-    unsafe {
-        API_KEY = Some(api_key.to_string());
-    }
-}
-
-fn get_api_key() -> Option<String> {
-    unsafe { API_KEY.clone() }
-}
