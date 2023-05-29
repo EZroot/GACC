@@ -8,11 +8,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub api_key: String,
+    pub python_code_create_iterations:i32,
+    pub python_use_conda_over_pip: bool,
 }
 
 pub async fn save_config(api_key: &str) -> Result<(), Box<dyn std::error::Error>> {
     let config = Config {
         api_key: api_key.to_string(),
+        python_code_create_iterations: 5,
+        python_use_conda_over_pip: true,
     };
 
     let mut file = AsyncFile::create("config.json").await?;
@@ -22,16 +26,17 @@ pub async fn save_config(api_key: &str) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-pub async fn load_config() -> Result<String, Box<dyn std::error::Error>> {
-    let mut file = AsyncFile::open("config.json").await?;
+pub async fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
+    let exe_path = std::env::current_exe()?;
+    let exe_dir = exe_path.parent().expect("Failed to get executable directory");
+
+    // Construct the path to the config file
+    let config_path = exe_dir.join("config.json");
+    let mut file = AsyncFile::open(config_path).await?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).await?;
 
     let config: Config = serde_json::from_slice(&buffer)?;
 
-    let api_key = config.api_key;
-
-    println!("API Key: {}", api_key);
-
-    Ok(api_key)
+    Ok(config)
 }

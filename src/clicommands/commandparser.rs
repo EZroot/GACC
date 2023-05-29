@@ -1,8 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, process::exit};
+use async_trait::async_trait;
+
+use std::env;
+use tokio::process::{Command as TokioCommand};
+
 
 // Trait representing a command
+#[async_trait]
 pub trait Command: CommandClone {
-    fn execute(&self, args: &[String]);
+    async fn execute(&self, args: &[String]);
 }
 
 pub trait CommandClone {
@@ -52,7 +58,7 @@ impl CommandDirectory {
         self.commands.insert(short_name.to_string(), short_command_info);
     }
 
-    pub fn parse_args(&self, args: &[String]) {
+    pub async fn parse_args(&self, args: &[String]) {
         if args.len() < 2 {
             println!("Usage: cargo run -- <command> <args...>");
             return;
@@ -69,7 +75,7 @@ impl CommandDirectory {
                         if command_args.is_empty() {
                             println!("{}", command_info.description);
                         } else {
-                            command_info.command.execute(&command_args);
+                            command_info.command.execute(&command_args).await;
                         }
                     } else {
                         println!("Command '{}' not found", cmd);
@@ -90,11 +96,36 @@ impl CommandDirectory {
                 if command_args.is_empty() {
                     println!("{}", command_info.description);
                 } else {
-                    command_info.command.execute(&command_args);
+                    command_info.command.execute(&command_args).await;
                 }
             } else {
                 println!("Command '{}' not found", cmd);
             }
         }
     }
+}
+
+pub async fn restart_with_args(args: &[String]) {
+    let executable = env::current_exe().expect("Failed to get current executable");
+
+    // Execute the new process with the custom arguments
+    let status = TokioCommand::new(executable)
+        .args(args)
+        .status()
+        .await;
+
+    // Check the status of the new process
+    match status {
+        Ok(exit_status) => {
+            if !exit_status.success() {
+                eprintln!("Failed to restart: {:?}", exit_status);
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to restart: {}", err);
+        }
+    }
+
+    // Terminate the current process
+    exit(0);
 }

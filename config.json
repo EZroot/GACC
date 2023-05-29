@@ -1,1 +1,1 @@
-{"api_key":"token"}
+{"api_key":"token","python_code_create_iterations":5,"python_use_conda_over_pip":true}

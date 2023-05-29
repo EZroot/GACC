@@ -1,44 +1,48 @@
+use std::env;
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::{self, AsyncWriteExt};
 
-pub async fn create_file_python(body: &str) -> std::io::Result<String>{
-    let file_name = "test_file";
+pub async fn create_file_python(filename: &str, body: &str) -> std::io::Result<String>{
+    let file_name = filename;
     let file_suffex = ".py";
     let file_path = create_file(body, file_name, file_suffex).await?;
     Ok(file_path)
 }
 
-pub async fn create_file_rust(body: &str) -> std::io::Result<String>{
-    let file_name = "test_file";
+pub async fn create_file_rust(filename: &str,body: &str) -> std::io::Result<String>{
+    let file_name = filename;
     let file_suffex = ".rs";
     let file_path = create_file(body, file_name, file_suffex).await?;
     Ok(file_path)
 }
 
-pub async fn create_file_csharp(body: &str) -> std::io::Result<String>{
-    let file_name = "test_file";
+pub async fn create_file_csharp(filename: &str,body: &str) -> std::io::Result<String>{
+    let file_name = filename;
     let file_suffex = ".cs";
     let file_path = create_file(body, file_name, file_suffex).await?;
     Ok(file_path)
 }
 
-pub async fn create_file_cplusplus(body: &str) -> std::io::Result<String>{
-    let file_name = "test_file";
+pub async fn create_file_cplusplus(filename: &str,body: &str) -> std::io::Result<String>{
+    let file_name = filename;
     let file_suffex = ".cpp";
     let file_path = create_file(body, file_name, file_suffex).await?;
     Ok(file_path)
 }
 
 async fn create_file(body: &str, file_name: &str, file_suffix: &str) -> std::io::Result<String> {
-    let file_path = format!("{}{}", file_name, file_suffix);
+    
+    let current_dir = env::current_dir().expect("Failed to get current directory");
+    let curr_dir_string = current_dir.to_string_lossy().to_string();
+    let file_path = format!("{}/{}{}", curr_dir_string, file_name, file_suffix);
 
     // Open the file asynchronously
     let mut file = File::create(&file_path).await?;
 
     // Write the bytes of the body to the file asynchronously
-    file.write_all(body.as_bytes()).await?;
+    file.write_all(body.trim().as_bytes()).await?;
 
     println!("Created: {}", file_path);
     Ok(file_path)
