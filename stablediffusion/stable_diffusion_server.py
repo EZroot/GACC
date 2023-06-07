@@ -1,6 +1,6 @@
 import os
 import asyncio
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 import torch
 from quart import Quart, jsonify, request
 from PIL import Image
@@ -19,9 +19,17 @@ def image_grid(imgs, rows, cols):
         grid.paste(img, box=(i % cols * w, i // cols * h))
     return grid
 
+def load_config_file(filename):
+    script_path = os.path.abspath(__file__)
+    script_directory = os.path.dirname(script_path)
+    config_file = os.path.join(script_directory, filename)
+
+    with open(config_file) as f:
+        config = json.load(f)
+    return config
+
 # Load model ids from the JSON file
-with open('model_ids.json', 'r') as file:
-    model_ids = json.load(file)
+model_ids = load_config_file('model_ids.json')
 
 # Prompt the user to choose a model id
 print("Please choose a model id from the following options:")
@@ -35,13 +43,17 @@ print(f"You chose: {chosen_model_id}")
 
 
 model_id = chosen_model_id
+#pipe = StableDiffusionPipeline.from_pretrained(model_id, revision="fp16", torch_dtype=torch.float16)
 pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32)
+pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 pipe = pipe.to("cuda")
+pipe.enable_attention_slicing() 
 
 def dummy_checker(images, **kwargs):
     return images, False
 
-pipe.safety_checker = dummy_checker
+if chosen_model_id == model_ids[0]:  # First model id in the list
+    pipe.safety_checker = dummy_checker
 
 app = Quart(__name__)
 
@@ -55,15 +67,6 @@ async def generate_image_async(prompt, height, width, num_inference_steps, guida
         guidance_scale=guidance_scale
     )
     return result.images[0]
-
-def load_config():
-    script_path = os.path.abspath(__file__)
-    script_directory = os.path.dirname(script_path)
-    config_file = os.path.join(script_directory, 'config.json')
-
-    with open(config_file) as f:
-        config = json.load(f)
-    return config
 
 @app.route('/generateimg')
 async def generate_image():
@@ -95,7 +98,7 @@ async def generate_image():
 
 
 if __name__ == '__main__':
-    config = load_config()
+    config = load_config_file('config.json')
     debug = config.get('debug', False)
     port = config.get('port', 1337)
     app.run(debug=debug, port=port)
