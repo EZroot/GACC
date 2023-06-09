@@ -8,7 +8,7 @@ pipe.to("cuda")
 pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
 
 # Path to the image
-img_path = './gen_pics/a_giant_robot_dragon.png'
+img_path = './gen_pics/lion.png'
 
 def open_local_image(img_path):
     image = PIL.Image.open(img_path)
@@ -18,10 +18,10 @@ def open_local_image(img_path):
 
 image = open_local_image(img_path)
 
-prompt = "remove the background and put a moon in the sky"
-result = pipe(prompt, image=image, num_inference_steps=200, image_guidance_scale=1).images
+prompt = "change the hand to a paw"
+result = pipe(prompt, image=image, num_inference_steps=50, image_guidance_scale=0).images
 output_image = result[0]
 
 # Save the output image
-output_path = './gen_pics/output_image.png'
+output_path = './gen_pics/lion_fixed.png'
 output_image.save(output_path)

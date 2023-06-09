@@ -1,0 +1,46 @@
+{
+  "AI": {
+    "controlnet": {
+      "models": [
+        {
+          "model": "lllyasviel/control_v11p_sd15_inpaint",
+          "useInpainting": true
+        },
+        {
+          "model": "lllyasviel/control_v11p_sd15s2_lineart_anime",
+          "useInpainting": true
+        },
+        {
+          "model": "lllyasviel/control_v11p_sd15s2_lineart",
+          "useInpainting": true
+        },
+        {
+          "model": "lllyasviel/control_v11p_sd15_openpose",
+          "useInpainting": false
+        },
+        {
+          "model": "lllyasviel/control_v11e_sd15_ip2p",
+          "useInpainting": false
+        },
+        {
+          "model": "lllyasviel/control_v11p_sd15_scribble",
+          "useInpainting": false
+        }
+      ]
+    },
+    "diffusion": {
+      "models": [
+        "runwayml/stable-diffusion-v1-5",
+        "stabilityai/stable-diffusion-2-1",
+        "stabilityai/stable-diffusion-2-1-base",
+        "dreamlike-art/dreamlike-photoreal-2.0",
+        "hakurei/waifu-diffusion",
+        "SG161222/Realistic_Vision_V1.4",
+        "Lykon/NeverEnding-Dream",
+        "prompthero/openjourney-v4",
+        "dreamlike-art/dreamlike-anime-1.0",
+        "Envvi/Inkpunk-Diffusion"
+      ]
+    }
+  }
+}

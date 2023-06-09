@@ -7,4 +7,4 @@ cd "$DIR"
 
 # Run the Python script using the Miniconda Python executable
 #"${miniconda_path}" ./stablediffusion/stable_diffusion_server.py
-python3.9 ./stablediffusion/stable_diffusion_server.py
+python3.9 ./python-ai-backend/stablediffusion/stable_diffusion_server.py

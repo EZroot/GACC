@@ -14,3 +14,5 @@ Cargo.lock
 *.pdb
 copilot_tests/
 gen_pics/
+python-ai-backend/utils/__pycache__/
+python-ai-backend/loaders/__pycache__/

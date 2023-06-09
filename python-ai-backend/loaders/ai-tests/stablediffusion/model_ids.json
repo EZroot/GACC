@@ -1,0 +1,12 @@
+[
+    "runwayml/stable-diffusion-v1-5", 
+    "stabilityai/stable-diffusion-2-1", 
+    "stabilityai/stable-diffusion-2-1-base",
+    "dreamlike-art/dreamlike-photoreal-2.0",
+    "hakurei/waifu-diffusion",
+    "SG161222/Realistic_Vision_V1.4",
+    "Lykon/NeverEnding-Dream",
+    "prompthero/openjourney-v4",
+    "dreamlike-art/dreamlike-anime-1.0",
+    "Envvi/Inkpunk-Diffusion"
+]
