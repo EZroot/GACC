@@ -52,16 +52,17 @@ def get_ai_model():
             exit()
 
         selected_controlnet_model = controlnet_models[int(controlnet_choice) - 1]['model']
+        use_inpainting = controlnet_models[int(controlnet_choice) - 1]['useInpainting']
+        route = controlnet_models[int(controlnet_choice) - 1]['route']
         selected_diffusion_model = _prompt_and_select_model(diffusion_models)
-        use_inpainting = True
 
     elif model_choice.upper() == 'D':
         selected_controlnet_model = None
         selected_diffusion_model = _prompt_and_select_model(diffusion_models)
         use_inpainting = False
-
+        route = "/stablediffusion"
     else:
         print("Invalid model choice!")
         exit()
 
-    return AIModel(selected_controlnet_model, selected_diffusion_model, use_inpainting)
+    return AIModel(selected_controlnet_model, selected_diffusion_model, use_inpainting, route)

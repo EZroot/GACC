@@ -1,26 +1,22 @@
+use gtk::glib;
 use gtk::prelude::*;
-use gtk::{Button, Window, WindowType};
 
-fn main() {
-    gtk::init().expect("Failed to initialize GTK.");
+fn main() -> glib::ExitCode {
+    let application =
+        gtk::Application::new(Some("com.github.gtk-rs.examples.basic"), Default::default());
+    application.connect_activate(build_ui);
+    application.run()
+}
 
-    let window = Window::new(WindowType::Toplevel);
-    window.set_title("My Rust GTK App");
-    window.set_default_size(200, 200);
+fn build_ui(application: &gtk::Application) {
+    let window = gtk::ApplicationWindow::new(application);
 
-    let button = Button::new_with_label("Click me!");
-    window.add(&button);
+    window.set_title(Some("First GTK Program"));
+    window.set_default_size(350, 70);
 
-    window.show_all();
+    let button = gtk::Button::with_label("Click me!");
 
-    window.connect_delete_event(|_, _| {
-        gtk::main_quit();
-        Inhibit(false)
-    });
+    window.set_child(Some(&button));
 
-    button.connect_clicked(|_| {
-        println!("Button clicked!");
-    });
-
-    gtk::main();
+    window.present();
 }

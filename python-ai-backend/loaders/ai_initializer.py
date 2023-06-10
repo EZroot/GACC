@@ -1,6 +1,7 @@
 from diffusers import StableDiffusionPipeline, StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler, ControlNetModel, DDIMScheduler
 from diffusers.utils import load_image
 import numpy as np
+from utils.imageutils import save_file
 import torch
 from PIL import Image
 from controlnet_aux import OpenposeDetector
@@ -79,7 +80,7 @@ def generate_image_controlnet_open_pose(pipe, image_filepath, prompt, generator,
     openpose = OpenposeDetector.from_pretrained('lllyasviel/ControlNet')
     with Image.open(image_filepath).convert("RGB").resize((512, 768)) as image:
         open_pose_image = openpose(image, hand_and_face=True)
-        open_pose_image.save("./gen_pics/open_pose_pose.png")
+        save_file(open_pose_image, "open_pose_pose")
         image = openpose(image, hand_and_face=True)
         generated_image = pipe(
                 prompt,
