@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\ez-paint-app.dir/objects.a
-C:\mingw64\bin\ar.exe qc CMakeFiles\ez-paint-app.dir/objects.a @CMakeFiles\ez-paint-app.dir\objects1.rsp
-C:\mingw64\bin\c++.exe -Wl,--whole-archive CMakeFiles\ez-paint-app.dir/objects.a -Wl,--no-whole-archive -o ez-paint-app.exe -Wl,--out-implib,libez-paint-app.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\ez-paint-app.dir\linkLibs.rsp

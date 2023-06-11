@@ -1,3 +1,0 @@
-C:/Repos/ultimate-ai-assistant/ez-paint-app/build/CMakeFiles/ez-paint-app.dir
-C:/Repos/ultimate-ai-assistant/ez-paint-app/build/CMakeFiles/ALL_BUILD.dir
-C:/Repos/ultimate-ai-assistant/ez-paint-app/build/CMakeFiles/ZERO_CHECK.dir
