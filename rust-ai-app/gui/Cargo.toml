@@ -1,0 +1,24 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.dev]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+codegen-units = 1
+panic = "abort"
+overflow-checks = true
+incremental = true
+
+
+[dependencies]
+gtk = { version = "0.6.6", package = "gtk4" }
+chrono = "^0"
+regex = "^0"
+kamadak-exif = "^0"
+lazy_static = "1.4.0"
