@@ -2,31 +2,37 @@ pub mod window{
     pub mod appstates;
     pub mod wingui;
     
-pub mod components {
-    pub mod gestures;
-    pub mod helper;
+    pub mod components {
+        pub mod airequestor;
+        pub mod gestures;
+        pub mod helper;
     }
 }
 
-
-use window::wingui;
-use window::appstates;
-
+use gtk::{Application, prelude::*, gio::ApplicationFlags};
 use window::wingui::WindowsApp;
-use gtk::{gio::ApplicationFlags, prelude::{ApplicationExt, ApplicationExtManual}};
-use window::components;
+use tokio::runtime::Builder;
 
 fn main() {
-    // Create a new application with the builder pattern
-    let app = gtk::Application::builder()
+    let application = Application::builder()
         .application_id("com.github.gtk-rs.examples.basic")
-        .flags(ApplicationFlags::FLAGS_NONE)
+        .flags(ApplicationFlags::empty())
         .build();
 
     let windowGuiApp = WindowsApp::new("Pico Picasso".to_string(), (512,768));
 
-    app.connect_activate(move |x| {windowGuiApp.on_activate(x);});
+    application.connect_activate(move |app| {
+        // Create a Tokio runtime
+        let rt = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
 
-    // Run the application
-    app.run();
+        // Spawn the async function on the Tokio runtime
+        rt.block_on(async {
+            windowGuiApp.on_activate(app).await;
+        });
+    });
+
+    application.run();
 }

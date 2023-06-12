@@ -14,9 +14,11 @@ use gtk::gdk_pixbuf::Pixbuf;
 use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
 use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION};
 use gtk::{prelude::*, ProgressBar};
+use tokio::runtime::Builder;
 
 use crate::window::appstates::AppState;
 
+use super::components::airequestor::AIRequestor;
 use super::components::gestures::Gestures;
 use super::components::helper::Helper;
 
@@ -26,6 +28,7 @@ pub struct WindowsApp {
 }
 
 impl WindowsApp {
+
     pub fn new(title: String, win_size: (i32, i32)) -> Self {
         Self {
             title: title,
@@ -34,7 +37,7 @@ impl WindowsApp {
     }
 
     // When the application is launched…
-    pub fn on_activate(&self, application: &gtk::Application) {
+    pub async fn on_activate(&self, application: &gtk::Application) {
         // … create a new window …
         let window = gtk::ApplicationWindow::new(application);
         window.set_title(Some("Pico Picasso"));
@@ -46,8 +49,6 @@ impl WindowsApp {
         let app_state = Rc::new(RefCell::new(AppState::new()));
 
         let frame = gtk::Frame::new(None);
-
-        // -------------------------------------------
 
         let header_bar = gtk::HeaderBar::new();
         window.set_titlebar(Some(&header_bar));
@@ -71,19 +72,33 @@ impl WindowsApp {
             .bidirectional()
             .build();
 
-        let confirm_search = gtk::Button::builder().label("Generate").build();
-
         let entry = gtk::SearchEntry::new();
         entry.set_hexpand(true);
         search_bar.set_child(Some(&entry));
         search_button.set_active(true);
 
-        entry.connect_search_changed(clone!(@weak label => move |entry| {
-            // if entry.text() != "" {
-            //     label.set_text(&entry.text());
-            // } else {
-            //     label.set_text("Type to start search");
-            // }
+        entry.connect_search_changed(clone!(@weak app_state => move |entry| {
+            if entry.text() != "" {
+                app_state.borrow_mut().prompt = entry.text().to_string();             
+            }
+        }));
+
+
+        let generate_image_button = gtk::Button::builder().label("Generate").build();
+        generate_image_button.connect_clicked(clone!(@weak app_state => move |x| {
+            let rt = Builder::new_current_thread().enable_all().build().unwrap();
+            let prompt = &app_state.borrow_mut().prompt;
+            println!("Generating image... {}", &prompt);
+            rt.block_on(async move {
+                match AIRequestor::send_ai_prompt_request(&prompt, 1).await {
+                    Ok(response) => {
+                        println!("Response: {}", response);
+                    }
+                    Err(e) => {
+                        println!("Request failed: {}", e);
+                    }
+                }
+            });
         }));
 
         // … with a button in it …
@@ -241,7 +256,7 @@ impl WindowsApp {
             .build();
 
         search_grid.attach(&search_bar, 0, 0, 1, 1);
-        search_grid.attach(&confirm_search, 1, 0, 1, 1);
+        search_grid.attach(&generate_image_button, 1, 0, 1, 1);
 
         let full_grid = gtk::Grid::builder()
             .halign(gtk::Align::Fill)
