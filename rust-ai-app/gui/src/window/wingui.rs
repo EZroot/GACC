@@ -15,12 +15,17 @@ use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
 use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION};
 use gtk::{prelude::*, ProgressBar};
 use tokio::runtime::Builder;
-
+use serde::{Deserialize, Serialize};
 use crate::window::appstates::AppState;
 
 use super::components::airequestor::AIRequestor;
 use super::components::gestures::Gestures;
 use super::components::helper::Helper;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Response {
+    image_path: String,
+}
 
 pub struct WindowsApp {
     title: String,
@@ -53,25 +58,28 @@ impl WindowsApp {
 
         let frame = gtk::Frame::new(None);
 
-        let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
-
-        let generate_image_button = self.create_button_generate_image(app_state.clone());
-
-        let drawing_area = self.create_drawing_area(app_state.clone());
+        let drawing_area = self.create_drawing_area(app_state.clone(), (512,768));
         self.initialize_drawing_gestures(&drawing_area, app_state.clone());
 
-        let container_info = self.create_progress_bar_container();
-
-        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone());
+        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(),(768,768));
         let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
-        self.load_image_to_drawing_area(
+        WindowsApp::load_image_to_drawing_area(
             image_filepath,
             &drawing_area_loaded_image,
             app_state.clone(),
         );
 
-        let container = self.create_container_append_widgets(container_info, prompt_bar, generate_image_button, drawing_area, drawing_area_loaded_image);
-        // --------------------------------------------
+        let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
+        let generate_image_button = self.create_button_generate_image(app_state.clone(), drawing_area_loaded_image.clone());
+
+        let container_info = self.create_progress_bar_container();
+        let container = self.create_container_append_widgets(
+            container_info,
+            prompt_bar,
+            generate_image_button,
+            drawing_area,
+            drawing_area_loaded_image,
+        );
 
         frame.set_child(Some(&container));
         window.set_child(Some(&frame));
@@ -133,29 +141,35 @@ impl WindowsApp {
         prompt_bar
     }
 
-    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>) -> gtk::Button {
+    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>, drawing_area_loaded_image : gtk::DrawingArea) -> gtk::Button {
         let generate_image_button = gtk::Button::builder().label("Generate").build();
-        generate_image_button.connect_clicked(clone!(@weak app_state => move |x| {
+        generate_image_button.connect_clicked(clone!(@weak app_state,@weak drawing_area_loaded_image => move |x| {
             let rt = Builder::new_current_thread().enable_all().build().unwrap();
+            let app_state_clone = app_state.clone();
             let prompt = &app_state.borrow_mut().prompt;
             println!("Generating image... {}", &prompt);
             rt.block_on(async move {
-                match AIRequestor::send_ai_prompt_request(&prompt, 1,512,768).await {
+                match AIRequestor::send_ai_prompt_request(&prompt, 1,768,768).await {
                     Ok(response) => {
                         println!("Response: {}", response);
+                        let res: Response = serde_json::from_str(&response).unwrap();
+                        let win_path = res.image_path.replace("/mnt/c/", "C:/");
+                        println!("Windows Path: {:?}", win_path);
+                       WindowsApp::load_image_to_drawing_area(win_path, &drawing_area_loaded_image, app_state_clone);
                     }
                     Err(e) => {
                         println!("Request failed: {}", e);
                     }
                 }
             });
+
         }));
         generate_image_button
     }
 
-    fn create_drawing_area(&self, app_state: Rc<RefCell<AppState>>) -> gtk::DrawingArea {
+    fn create_drawing_area(&self, app_state: Rc<RefCell<AppState>>, size:(i32,i32)) -> gtk::DrawingArea {
         let drawing_area = gtk::DrawingArea::new();
-        drawing_area.set_size_request(512, 768);
+        drawing_area.set_size_request(size.0, size.1);
         drawing_area.set_visible(true);
 
         let image_surface =
@@ -237,8 +251,7 @@ impl WindowsApp {
         container_info
     }
 
-    fn load_image_to_drawing_area(
-        &self,
+    pub fn load_image_to_drawing_area(
         filepath: String,
         drawing_area_loaded_image: &gtk::DrawingArea,
         app_state: Rc<RefCell<AppState>>,
@@ -275,7 +288,7 @@ impl WindowsApp {
                 } else {
                     // Draw a placeholder or any other action you want to take
                     cr.set_source_rgb(0.5, 0.5, 0.5);
-                    cr.rectangle(0.0, 0.0, 512.0, 768.0);
+                    cr.rectangle(0.0, 0.0, 768.0, 768.0);
                     cr.fill().unwrap();
                 }
                 }
@@ -285,7 +298,7 @@ impl WindowsApp {
         drawing_area_loaded_image.connect_realize(
             clone!(@weak drawing_area_loaded_image, @weak app_state => move |_| {
                 println!("Drawing area connected shown");
-                Gestures::pressed(512 as f64,768 as f64,&drawing_area_loaded_image, &app_state);
+                Gestures::pressed(768 as f64,768 as f64,&drawing_area_loaded_image, &app_state);
                 drawing_area_loaded_image.queue_draw();
             }),
         );
@@ -293,13 +306,13 @@ impl WindowsApp {
 
     fn create_container_append_widgets(
         &self,
-        container_info : gtk::Box,
+        container_info: gtk::Box,
         prompt_bar: gtk::SearchBar,
         generate_image_button: gtk::Button,
         drawing_area: gtk::DrawingArea,
         drawing_area_loaded_image: gtk::DrawingArea,
     ) -> gtk::Box {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        let container = gtk::Box::new(gtk::Orientation::Vertical, 6);
 
         let search_grid = gtk::Grid::builder()
             .halign(gtk::Align::Fill)
@@ -317,20 +330,19 @@ impl WindowsApp {
             .build();
 
         full_grid.attach(&search_grid, 0, 0, 1, 1);
-        full_grid.attach(&drawing_area, 0, 1, 1, 1);
+        full_grid.attach(&container_info, 1, 0, 1, 1);
 
         let other_grid = gtk::Grid::builder()
             .halign(gtk::Align::Fill)
             .valign(gtk::Align::Baseline)
             .row_spacing(6)
             .build();
-
-        other_grid.attach(&container_info, 0, 0, 1, 1);
-        other_grid.attach(&drawing_area_loaded_image, 0, 1, 1, 1);
+        
+        other_grid.attach(&drawing_area, 0, 0, 1, 1);
+        other_grid.attach(&drawing_area_loaded_image, 1, 0, 1, 1);
 
         container.append(&full_grid);
         container.append(&other_grid);
         container
     }
-
 }
