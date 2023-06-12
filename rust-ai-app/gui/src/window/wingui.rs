@@ -118,9 +118,24 @@ impl WindowsApp {
             }
             Inhibit::default() // Return `Inhibit` to allow event propagation
         });
+
+        let image_counter = gtk::Entry::builder()
+        .placeholder_text("1")
+        .tooltip_text("How many images to generate")
+        .build();
+
+        let app_state_img_counter = app_state.clone();
+        image_counter.connect_changed(move |entry| {
+            let my_integer = entry.text().parse::<i32>().unwrap_or(1);
+            println!("Img counter changed! {}",my_integer);
+            app_state_img_counter.borrow_mut().image_count = my_integer;
+        });
+        let image_counter_label = gtk::Label::builder().label("Image Count = ").build();
         
         header_bar.pack_start(&mode_switch);
         header_bar.pack_start(&switch_label);
+        header_bar.pack_start(&image_counter_label);
+        header_bar.pack_start(&image_counter);
 
         let prompt_bar = gtk::SearchBar::builder()
             .valign(gtk::Align::Start)
