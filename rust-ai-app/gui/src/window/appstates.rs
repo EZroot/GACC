@@ -1,4 +1,5 @@
 pub struct AppState {
+    pub image_surface: Option<gtk::cairo::ImageSurface>,
     pub surface: Option<gtk::cairo::Surface>,
     pub start_pos: (f64, f64),
     pub prompt: String,
@@ -9,6 +10,7 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
+            image_surface: None,
             surface: None,
             start_pos: (0.0, 0.0),
             prompt: "Example Prompt".to_string(),

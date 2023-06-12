@@ -7,16 +7,18 @@ use glib::*;
 use gtk::cairo::ffi::cairo_font_type_t;
 use gtk::cairo::{self, Context};
 use gtk::gdk::ffi::{GdkRGBA, GDK_BUTTON_PRIMARY};
-use gtk::gio::ApplicationFlags;
+use gtk::gio::{self, ApplicationFlags};
 // glib and other dependencies are re-exported by the gtk crate
-use gtk::gdk::{Display, Paintable};
-use gtk::gdk_pixbuf::Pixbuf;
-use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
-use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StateFlags, Inhibit};
-use gtk::{prelude::*, ProgressBar};
-use tokio::runtime::Builder;
-use serde::{Deserialize, Serialize};
 use crate::window::appstates::AppState;
+use gtk::gdk::{Display, Paintable};
+use gtk::gdk_pixbuf::{self, Pixbuf};
+use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
+use gtk::{
+    gdk, glib, graphene, gsk, CssProvider, Inhibit, StateFlags, STYLE_PROVIDER_PRIORITY_APPLICATION,
+};
+use gtk::{prelude::*, ProgressBar};
+use serde::{Deserialize, Serialize};
+use tokio::runtime::Builder;
 
 use super::components::airequestor::AIRequestor;
 use super::components::gestures::Gestures;
@@ -62,7 +64,10 @@ impl WindowsApp {
         let drawing_area = self.create_drawing_area(app_state.clone(), drawing_size);
         self.initialize_drawing_gestures(&drawing_area, app_state.clone());
 
-        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(),drawing_size);
+        let save_button = gtk::Button::builder().label("Save").build();
+        save_button.connect_clicked(clone!(@weak app_state, @weak drawing_area => move |_| { WindowsApp::save_drawing_area_as_image(app_state, drawing_area); }));
+
+        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(), drawing_size);
         let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
         WindowsApp::load_image_to_drawing_area(
             image_filepath,
@@ -71,7 +76,8 @@ impl WindowsApp {
         );
 
         let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
-        let generate_image_button = self.create_button_generate_image(app_state.clone(), drawing_area_loaded_image.clone());
+        let generate_image_button =
+            self.create_button_generate_image(app_state.clone(), drawing_area_loaded_image.clone());
 
         let container_info = self.create_progress_bar_container();
         let container = self.create_container_append_widgets(
@@ -81,6 +87,7 @@ impl WindowsApp {
             drawing_area,
             drawing_area_loaded_image,
         );
+        container.append(&save_button);
 
         frame.set_child(Some(&container));
         window.set_child(Some(&frame));
@@ -98,6 +105,39 @@ impl WindowsApp {
         window
     }
 
+    pub fn save_drawing_area_as_image(
+        app_state: Rc<RefCell<AppState>>,
+        drawing_area: gtk::DrawingArea,
+    ) {
+        let question_dialog = gtk::Dialog::builder().modal(true).build();
+        //question_dialog.add_buttons(["Cancel", "Ok"]);
+        question_dialog.set_title(Some("Save file"));
+        //let answer = question_dialog.choose_future(Some(&*window)).await;
+
+        question_dialog.show();
+        
+            let app_state_clone = app_state.clone();
+
+            let img_size = app_state_clone.borrow().image_size;
+
+            let mut image_surface =
+                cairo::ImageSurface::create(cairo::Format::ARgb32, img_size.0, img_size.1).unwrap();
+            let pixel_data: Vec<u8> = image_surface.data().unwrap().to_vec(); //cairo::ImageSurface::data(&mut image_surface).unwrap().to_vec();
+            let bytes = glib::Bytes::from(&pixel_data);
+            let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
+                &bytes,
+                gdk_pixbuf::Colorspace::Rgb,
+                true,
+                8,
+                img_size.0,
+                img_size.1,
+                8 as i32,
+            );
+
+            pixbuf.savev("testpic.png", "png", &[]).unwrap();
+        }
+    
+
     fn create_prompt_bar(
         &self,
         window: &gtk::ApplicationWindow,
@@ -111,27 +151,27 @@ impl WindowsApp {
         mode_switch.connect_state_set(move |_, state| {
             if state == true {
                 println!("Req: Image Size set - 768,768");
-                app_state_img_mod.borrow_mut().image_size = (768,768);
-            }else{
+                app_state_img_mod.borrow_mut().image_size = (768, 768);
+            } else {
                 println!("Req: Image Size set - 512,768");
-                app_state_img_mod.borrow_mut().image_size = (512,768);
+                app_state_img_mod.borrow_mut().image_size = (512, 768);
             }
             Inhibit::default() // Return `Inhibit` to allow event propagation
         });
 
         let image_counter = gtk::Entry::builder()
-        .placeholder_text("1")
-        .tooltip_text("How many images to generate")
-        .build();
+            .placeholder_text("1")
+            .tooltip_text("How many images to generate")
+            .build();
 
         let app_state_img_counter = app_state.clone();
         image_counter.connect_changed(move |entry| {
             let my_integer = entry.text().parse::<i32>().unwrap_or(1);
-            println!("Img counter changed! {}",my_integer);
+            println!("Img counter changed! {}", my_integer);
             app_state_img_counter.borrow_mut().image_count = my_integer;
         });
         let image_counter_label = gtk::Label::builder().label("Image Count = ").build();
-        
+
         header_bar.pack_start(&mode_switch);
         header_bar.pack_start(&switch_label);
         header_bar.pack_start(&image_counter_label);
@@ -173,7 +213,11 @@ impl WindowsApp {
         prompt_bar
     }
 
-    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>, drawing_area_loaded_image: gtk::DrawingArea) -> gtk::Button {
+    fn create_button_generate_image(
+        &self,
+        app_state: Rc<RefCell<AppState>>,
+        drawing_area_loaded_image: gtk::DrawingArea,
+    ) -> gtk::Button {
         let generate_image_button = gtk::Button::builder().label("Generate").build();
         generate_image_button.connect_clicked(clone!(@weak app_state, @weak drawing_area_loaded_image => move |_| {
             let rt = Builder::new_current_thread().enable_all().build().unwrap();
@@ -200,10 +244,12 @@ impl WindowsApp {
         }));
         generate_image_button
     }
-    
-    
-    
-    fn create_drawing_area(&self, app_state: Rc<RefCell<AppState>>, size:(i32,i32)) -> gtk::DrawingArea {
+
+    fn create_drawing_area(
+        &self,
+        app_state: Rc<RefCell<AppState>>,
+        size: (i32, i32),
+    ) -> gtk::DrawingArea {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(size.0, size.1);
         drawing_area.set_visible(true);
@@ -298,7 +344,7 @@ impl WindowsApp {
             Ok(pixbuf) => {
                 pixbuf_loaded = true;
                 println!("Image loaded successfully");
-                Some(pixbuf)//.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
+                Some(pixbuf) //.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
             }
             Err(_) => {
                 // Handle the case when the Pixbuf fails to load
@@ -310,7 +356,7 @@ impl WindowsApp {
         }
         .expect("Failed to resize image");
 
-        let image_size = (resized_pixbuf.width(), resized_pixbuf.height());//we dont want the app size here, we want to get the image size since thats what were loading...app_state.borrow_mut().image_size;
+        let image_size = (resized_pixbuf.width(), resized_pixbuf.height()); //we dont want the app size here, we want to get the image size since thats what were loading...app_state.borrow_mut().image_size;
 
         drawing_area_loaded_image.set_size_request(image_size.0, image_size.1);
         drawing_area_loaded_image.set_draw_func(
@@ -377,7 +423,7 @@ impl WindowsApp {
             .valign(gtk::Align::Baseline)
             .row_spacing(6)
             .build();
-        
+
         other_grid.attach(&drawing_area, 0, 0, 1, 1);
         other_grid.attach(&drawing_area_loaded_image, 1, 0, 1, 1);
 
