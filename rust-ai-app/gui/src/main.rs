@@ -19,7 +19,7 @@ fn main() {
         .flags(ApplicationFlags::empty())
         .build();
 
-    let windowGuiApp = WindowsApp::new("Pico Picasso".to_string(), (512,768));
+    let windows_gui_app = WindowsApp::new("Pico Picasso".to_string(), (1280,768), true, true);
 
     application.connect_activate(move |app| {
         // Create a Tokio runtime
@@ -30,7 +30,7 @@ fn main() {
 
         // Spawn the async function on the Tokio runtime
         rt.block_on(async {
-            windowGuiApp.on_activate(app).await;
+            windows_gui_app.on_activate(app).await;
         });
     });
 

@@ -25,72 +25,122 @@ use super::components::helper::Helper;
 pub struct WindowsApp {
     title: String,
     size: (i32, i32),
+    resizable: bool,
+    force_dark_theme: bool,
 }
 
 impl WindowsApp {
-
-    pub fn new(title: String, win_size: (i32, i32)) -> Self {
+    pub fn new(
+        title: String,
+        win_size: (i32, i32),
+        resizable: bool,
+        force_dark_theme: bool,
+    ) -> Self {
         Self {
             title: title,
             size: win_size,
+            resizable: resizable,
+            force_dark_theme: force_dark_theme,
         }
     }
 
     // When the application is launched…
     pub async fn on_activate(&self, application: &gtk::Application) {
         // … create a new window …
-        let window = gtk::ApplicationWindow::new(application);
-        window.set_title(Some("Pico Picasso"));
-        window
-            .settings()
-            .set_gtk_application_prefer_dark_theme(true);
-        window.set_resizable(false);
+        let window = self.create_new_window(application);
 
         let app_state = Rc::new(RefCell::new(AppState::new()));
 
         let frame = gtk::Frame::new(None);
 
+        let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
+
+        let generate_image_button = self.create_button_generate_image(app_state.clone());
+
+        let drawing_area = self.create_drawing_area(app_state.clone());
+        self.initialize_drawing_gestures(&drawing_area, app_state.clone());
+
+        let container_info = self.create_progress_bar_container();
+
+        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone());
+        let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
+        self.load_image_to_drawing_area(
+            image_filepath,
+            &drawing_area_loaded_image,
+            app_state.clone(),
+        );
+
+        let container = self.create_container_append_widgets(container_info, prompt_bar, generate_image_button, drawing_area, drawing_area_loaded_image);
+        // --------------------------------------------
+
+        frame.set_child(Some(&container));
+        window.set_child(Some(&frame));
+        window.present();
+    }
+
+    fn create_new_window(&self, application: &gtk::Application) -> gtk::ApplicationWindow {
+        let window = gtk::ApplicationWindow::new(application);
+        window.set_title(Some(&self.title));
+        window
+            .settings()
+            .set_gtk_application_prefer_dark_theme(self.force_dark_theme);
+        window.set_default_size(self.size.0, self.size.1);
+        window.set_resizable(self.resizable);
+        window
+    }
+
+    fn create_prompt_bar(
+        &self,
+        window: &gtk::ApplicationWindow,
+        app_state: Rc<RefCell<AppState>>,
+    ) -> gtk::SearchBar {
         let header_bar = gtk::HeaderBar::new();
         window.set_titlebar(Some(&header_bar));
 
-        let label = gtk::Label::builder()
-            .label("Type to start search")
-            .halign(gtk::Align::Center)
-            .valign(gtk::Align::Center)
-            .build();
-
-        let search_bar = gtk::SearchBar::builder()
+        let prompt_bar = gtk::SearchBar::builder()
             .valign(gtk::Align::Start)
-            .key_capture_widget(&window)
+            .key_capture_widget(window)
             .build();
-
-        let search_button = gtk::ToggleButton::new();
-        search_button.set_icon_name("system-search-symbolic");
-        search_button
-            .bind_property("active", &search_bar, "search-mode-enabled")
+        let show_prompt_bar = gtk::ToggleButton::new();
+        show_prompt_bar.set_icon_name("system-search-symbolic");
+        show_prompt_bar
+            .bind_property("active", &prompt_bar, "search-mode-enabled")
             .sync_create()
             .bidirectional()
             .build();
 
         let entry = gtk::SearchEntry::new();
         entry.set_hexpand(true);
-        search_bar.set_child(Some(&entry));
-        search_button.set_active(true);
+        prompt_bar.set_child(Some(&entry));
+        show_prompt_bar.set_active(true);
 
         entry.connect_search_changed(clone!(@weak app_state => move |entry| {
             if entry.text() != "" {
-                app_state.borrow_mut().prompt = entry.text().to_string();             
+                app_state.borrow_mut().prompt = entry.text().to_string();
             }
         }));
 
+        let file_button = gtk::MenuButton::new();
+        file_button.set_label("File");
 
+        let ai_button = gtk::MenuButton::new();
+        ai_button.set_label("AI Models");
+
+        header_bar.pack_end(&ai_button);
+        header_bar.pack_end(&file_button);
+        header_bar.pack_end(&show_prompt_bar);
+
+        prompt_bar
+    }
+
+    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>) -> gtk::Button {
         let generate_image_button = gtk::Button::builder().label("Generate").build();
         generate_image_button.connect_clicked(clone!(@weak app_state => move |x| {
             let rt = Builder::new_current_thread().enable_all().build().unwrap();
             let prompt = &app_state.borrow_mut().prompt;
             println!("Generating image... {}", &prompt);
             rt.block_on(async move {
-                match AIRequestor::send_ai_prompt_request(&prompt, 1).await {
+                match AIRequestor::send_ai_prompt_request(&prompt, 1,512,768).await {
                     Ok(response) => {
                         println!("Response: {}", response);
                     }
@@ -100,12 +150,10 @@ impl WindowsApp {
                 }
             });
         }));
+        generate_image_button
+    }
 
-        // … with a button in it …
-        let button = gtk::Button::with_label("Hello World!");
-        // … which closes the window when clicked
-        button.connect_clicked(clone!(@weak window => move |_| Helper::print_test()));
-
+    fn create_drawing_area(&self, app_state: Rc<RefCell<AppState>>) -> gtk::DrawingArea {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(512, 768);
         drawing_area.set_visible(true);
@@ -124,13 +172,20 @@ impl WindowsApp {
                 }
             }),
         );
-
         drawing_area.connect_realize(clone!(@weak drawing_area, @weak app_state => move |_| {
             println!("Drawing area connected shown");
         Gestures::pressed(512 as f64,768 as f64,&drawing_area, &app_state);
         drawing_area.queue_draw();
         }));
 
+        drawing_area
+    }
+
+    fn initialize_drawing_gestures(
+        &self,
+        drawing_area: &gtk::DrawingArea,
+        app_state: Rc<RefCell<AppState>>,
+    ) {
         let drag = gtk::GestureDrag::new();
         drag.set_button(1);
 
@@ -155,19 +210,10 @@ impl WindowsApp {
 
         drawing_area.add_controller(press);
         drawing_area.add_controller(drag);
+    }
 
-        let file_button = gtk::MenuButton::new();
-        file_button.set_label("File");
-
-        let ai_button = gtk::MenuButton::new();
-        ai_button.set_label("AI Models");
-
-        header_bar.pack_end(&ai_button);
-        header_bar.pack_end(&file_button);
-        header_bar.pack_end(&search_button);
-
+    fn create_progress_bar_container(&self) -> gtk::Box {
         let container_info = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        container_info.set_width_request(512);
         let info_label = gtk::Label::builder().halign(gtk::Align::Center).build();
         info_label.set_text("AI Image Generation Progress");
 
@@ -188,23 +234,22 @@ impl WindowsApp {
         };
 
         glib::timeout_add_seconds_local(1, tick);
+        container_info
+    }
 
-        let drawing_area_image = gtk::DrawingArea::new();
-        drawing_area_image.set_size_request(512, 768);
-        drawing_area_image.set_visible(true);
-
-        let image_surface_image =
-            gdk::cairo::ImageSurface::create(cairo::Format::ARgb32, 512, 768).unwrap();
-
+    fn load_image_to_drawing_area(
+        &self,
+        filepath: String,
+        drawing_area_loaded_image: &gtk::DrawingArea,
+        app_state: Rc<RefCell<AppState>>,
+    ) {
         let mut pixbuf_loaded = false;
-        let original_pixbuf = gdk::gdk_pixbuf::Pixbuf::from_file(
-            "./gen_pics/a52e833634f22ad98e3ff8814fa79b59d3e5645dcf7cca077c606402c0d2d4f3.png",
-        );
+        let original_pixbuf = gdk::gdk_pixbuf::Pixbuf::from_file(filepath);
         let resized_pixbuf = match original_pixbuf {
             Ok(pixbuf) => {
                 pixbuf_loaded = true;
                 println!("Image loaded successfully");
-                pixbuf.scale_simple(512, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
+                pixbuf.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
             }
             Err(_) => {
                 // Handle the case when the Pixbuf fails to load
@@ -216,7 +261,7 @@ impl WindowsApp {
         }
         .expect("Failed to resize image");
 
-        drawing_area_image.set_draw_func(
+        drawing_area_loaded_image.set_draw_func(
             clone!(@strong app_state => move |drawing_area_image, cr, width, height| {
                 // Use AppState's surface
                 if let Some(surface) = &app_state.borrow().surface {
@@ -237,16 +282,23 @@ impl WindowsApp {
             }),
         );
 
-        drawing_area_image.connect_realize(
-            clone!(@weak drawing_area_image, @weak app_state => move |_| {
+        drawing_area_loaded_image.connect_realize(
+            clone!(@weak drawing_area_loaded_image, @weak app_state => move |_| {
                 println!("Drawing area connected shown");
-                Gestures::pressed(512 as f64,768 as f64,&drawing_area_image, &app_state);
-            drawing_area_image.queue_draw();
+                Gestures::pressed(512 as f64,768 as f64,&drawing_area_loaded_image, &app_state);
+                drawing_area_loaded_image.queue_draw();
             }),
         );
+    }
 
-        // --------------------------------------------
-
+    fn create_container_append_widgets(
+        &self,
+        container_info : gtk::Box,
+        prompt_bar: gtk::SearchBar,
+        generate_image_button: gtk::Button,
+        drawing_area: gtk::DrawingArea,
+        drawing_area_loaded_image: gtk::DrawingArea,
+    ) -> gtk::Box {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
 
         let search_grid = gtk::Grid::builder()
@@ -255,7 +307,7 @@ impl WindowsApp {
             .row_spacing(6)
             .build();
 
-        search_grid.attach(&search_bar, 0, 0, 1, 1);
+        search_grid.attach(&prompt_bar, 0, 0, 1, 1);
         search_grid.attach(&generate_image_button, 1, 0, 1, 1);
 
         let full_grid = gtk::Grid::builder()
@@ -274,13 +326,11 @@ impl WindowsApp {
             .build();
 
         other_grid.attach(&container_info, 0, 0, 1, 1);
-        other_grid.attach(&drawing_area_image, 0, 1, 1, 1);
+        other_grid.attach(&drawing_area_loaded_image, 0, 1, 1, 1);
 
         container.append(&full_grid);
         container.append(&other_grid);
-
-        frame.set_child(Some(&container));
-        window.set_child(Some(&frame));
-        window.present();
+        container
     }
+
 }
