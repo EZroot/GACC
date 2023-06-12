@@ -12,7 +12,7 @@ use gtk::gio::ApplicationFlags;
 use gtk::gdk::{Display, Paintable};
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
-use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION};
+use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StateFlags, Inhibit};
 use gtk::{prelude::*, ProgressBar};
 use tokio::runtime::Builder;
 use serde::{Deserialize, Serialize};
@@ -58,10 +58,11 @@ impl WindowsApp {
 
         let frame = gtk::Frame::new(None);
 
-        let drawing_area = self.create_drawing_area(app_state.clone(), (512,768));
+        let drawing_size = app_state.borrow_mut().image_size;
+        let drawing_area = self.create_drawing_area(app_state.clone(), drawing_size);
         self.initialize_drawing_gestures(&drawing_area, app_state.clone());
 
-        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(),(768,768));
+        let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(),drawing_size);
         let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
         WindowsApp::load_image_to_drawing_area(
             image_filepath,
@@ -104,6 +105,22 @@ impl WindowsApp {
     ) -> gtk::SearchBar {
         let header_bar = gtk::HeaderBar::new();
         window.set_titlebar(Some(&header_bar));
+        let mode_switch = gtk::Switch::new();
+        let switch_label = gtk::Label::new(Some("512x768 / 768x768"));
+        let app_state_img_mod = app_state.clone();
+        mode_switch.connect_state_set(move |_, state| {
+            if state == true {
+                println!("Req: Image Size set - 768,768");
+                app_state_img_mod.borrow_mut().image_size = (768,768);
+            }else{
+                println!("Req: Image Size set - 512,768");
+                app_state_img_mod.borrow_mut().image_size = (512,768);
+            }
+            Inhibit::default() // Return `Inhibit` to allow event propagation
+        });
+        
+        header_bar.pack_start(&mode_switch);
+        header_bar.pack_start(&switch_label);
 
         let prompt_bar = gtk::SearchBar::builder()
             .valign(gtk::Align::Start)
@@ -141,39 +158,43 @@ impl WindowsApp {
         prompt_bar
     }
 
-    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>, drawing_area_loaded_image : gtk::DrawingArea) -> gtk::Button {
+    fn create_button_generate_image(&self, app_state: Rc<RefCell<AppState>>, drawing_area_loaded_image: gtk::DrawingArea) -> gtk::Button {
         let generate_image_button = gtk::Button::builder().label("Generate").build();
-        generate_image_button.connect_clicked(clone!(@weak app_state,@weak drawing_area_loaded_image => move |x| {
+        generate_image_button.connect_clicked(clone!(@weak app_state, @weak drawing_area_loaded_image => move |_| {
             let rt = Builder::new_current_thread().enable_all().build().unwrap();
-            let app_state_clone = app_state.clone();
-            let prompt = &app_state.borrow_mut().prompt;
+            let app_state_clone = Rc::clone(&app_state);
+            let prompt = app_state_clone.borrow().prompt.clone();
+            let img_count = app_state_clone.borrow().image_count.clone();
+            let img_size = app_state_clone.borrow().image_size.clone();
             println!("Generating image... {}", &prompt);
+            let app_state_clone2 = Rc::clone(&app_state_clone);
             rt.block_on(async move {
-                match AIRequestor::send_ai_prompt_request(&prompt, 1,768,768).await {
+                match AIRequestor::send_ai_prompt_request(&prompt, img_count, img_size.0, img_size.1).await {
                     Ok(response) => {
                         println!("Response: {}", response);
                         let res: Response = serde_json::from_str(&response).unwrap();
                         let win_path = res.image_path.replace("/mnt/c/", "C:/");
                         println!("Windows Path: {:?}", win_path);
-                       WindowsApp::load_image_to_drawing_area(win_path, &drawing_area_loaded_image, app_state_clone);
+                        WindowsApp::load_image_to_drawing_area(win_path, &drawing_area_loaded_image, app_state_clone2);
                     }
                     Err(e) => {
                         println!("Request failed: {}", e);
                     }
                 }
             });
-
         }));
         generate_image_button
     }
-
+    
+    
+    
     fn create_drawing_area(&self, app_state: Rc<RefCell<AppState>>, size:(i32,i32)) -> gtk::DrawingArea {
         let drawing_area = gtk::DrawingArea::new();
         drawing_area.set_size_request(size.0, size.1);
         drawing_area.set_visible(true);
 
         let image_surface =
-            gdk::cairo::ImageSurface::create(cairo::Format::ARgb32, 512, 768).unwrap();
+            gdk::cairo::ImageSurface::create(cairo::Format::ARgb32, size.0, size.1).unwrap();
         let surface = &*image_surface;
         app_state.borrow_mut().surface = Some(surface.clone());
 
@@ -188,7 +209,7 @@ impl WindowsApp {
         );
         drawing_area.connect_realize(clone!(@weak drawing_area, @weak app_state => move |_| {
             println!("Drawing area connected shown");
-        Gestures::pressed(512 as f64,768 as f64,&drawing_area, &app_state);
+        Gestures::pressed(size.0 as f64,size.1 as f64,&drawing_area, &app_state);
         drawing_area.queue_draw();
         }));
 
@@ -262,7 +283,7 @@ impl WindowsApp {
             Ok(pixbuf) => {
                 pixbuf_loaded = true;
                 println!("Image loaded successfully");
-                pixbuf.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
+                Some(pixbuf)//.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
             }
             Err(_) => {
                 // Handle the case when the Pixbuf fails to load
@@ -274,6 +295,9 @@ impl WindowsApp {
         }
         .expect("Failed to resize image");
 
+        let image_size = (resized_pixbuf.width(), resized_pixbuf.height());//we dont want the app size here, we want to get the image size since thats what were loading...app_state.borrow_mut().image_size;
+
+        drawing_area_loaded_image.set_size_request(image_size.0, image_size.1);
         drawing_area_loaded_image.set_draw_func(
             clone!(@strong app_state => move |drawing_area_image, cr, width, height| {
                 // Use AppState's surface
@@ -298,7 +322,8 @@ impl WindowsApp {
         drawing_area_loaded_image.connect_realize(
             clone!(@weak drawing_area_loaded_image, @weak app_state => move |_| {
                 println!("Drawing area connected shown");
-                Gestures::pressed(768 as f64,768 as f64,&drawing_area_loaded_image, &app_state);
+                let image_size = app_state.borrow_mut().image_size;
+                Gestures::pressed(image_size.0 as f64,image_size.1 as f64,&drawing_area_loaded_image, &app_state);
                 drawing_area_loaded_image.queue_draw();
             }),
         );
