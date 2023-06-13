@@ -5,7 +5,8 @@ use chrono::Local;
 use glib::*;
 
 use gtk::cairo::ffi::cairo_font_type_t;
-use gtk::cairo::{self, Context};
+use gtk::cairo::{self, Context, Surface};
+use gtk::ffi::GtkResponseType;
 use gtk::gdk::ffi::{GdkRGBA, GDK_BUTTON_PRIMARY};
 use gtk::gio::{self, ApplicationFlags};
 // glib and other dependencies are re-exported by the gtk crate
@@ -14,7 +15,8 @@ use gtk::gdk::{Display, Paintable};
 use gtk::gdk_pixbuf::{self, Pixbuf};
 use gtk::graphene::ffi::{graphene_rect_init, graphene_rect_t};
 use gtk::{
-    gdk, glib, graphene, gsk, CssProvider, Inhibit, StateFlags, STYLE_PROVIDER_PRIORITY_APPLICATION,
+    gdk, glib, graphene, gsk, CssProvider, FileChooser, Inhibit, ResponseType, StateFlags,
+    STYLE_PROVIDER_PRIORITY_APPLICATION,
 };
 use gtk::{prelude::*, ProgressBar};
 use serde::{Deserialize, Serialize};
@@ -67,12 +69,17 @@ impl WindowsApp {
         let save_button = gtk::Button::builder().label("Save").build();
         save_button.connect_clicked(clone!(@weak app_state, @weak drawing_area => move |_| { WindowsApp::save_drawing_area_as_image(app_state, drawing_area); }));
 
+        let window_ref = window.clone();
+        let load_button = gtk::Button::builder().label("Load Drawing").build();
+        load_button.connect_clicked(clone!(@weak app_state, @weak drawing_area => move |_| { WindowsApp::select_image_to_load_in_drawing_area(&drawing_area, app_state, &window_ref); }));
+
         let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(), drawing_size);
         let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
         WindowsApp::load_image_to_drawing_area(
             image_filepath,
             &drawing_area_loaded_image,
             app_state.clone(),
+            false,
         );
 
         let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
@@ -88,6 +95,7 @@ impl WindowsApp {
             drawing_area_loaded_image,
         );
         container.append(&save_button);
+        container.append(&load_button);
 
         frame.set_child(Some(&container));
         window.set_child(Some(&frame));
@@ -131,7 +139,7 @@ impl WindowsApp {
             }
             let pixel_data: Vec<u8> = image_surface.data().unwrap().to_vec(); //cairo::ImageSurface::data(&mut image_surface).unwrap().to_vec();
             let bytes = glib::Bytes::from(&pixel_data);
-            
+
             let width = img_size.0;
             let channels = 4; // 3 for RGB, 4 for RGBA
             let bytes_per_channel = 1; // 1 byte per channel for 8 bits per channel
@@ -247,7 +255,7 @@ impl WindowsApp {
                         let res: Response = serde_json::from_str(&response).unwrap();
                         let win_path = res.image_path.replace("/mnt/c/", "C:/");
                         println!("Windows Path: {:?}", win_path);
-                        WindowsApp::load_image_to_drawing_area(win_path, &drawing_area_loaded_image, app_state_clone2);
+                        WindowsApp::load_image_to_drawing_area(win_path, &drawing_area_loaded_image, app_state_clone2, false);
                     }
                     Err(e) => {
                         println!("Request failed: {}", e);
@@ -346,10 +354,43 @@ impl WindowsApp {
         container_info
     }
 
+    pub fn select_image_to_load_in_drawing_area(
+        drawing_area_loaded_image: &gtk::DrawingArea,
+        app_state: Rc<RefCell<AppState>>,
+        window: &gtk::ApplicationWindow,
+    ) {
+        let file_chooser = gtk::FileChooserDialog::new(
+            Some("Choose Image"),
+            Some(window),
+            gtk::FileChooserAction::Open,
+            &[
+                ("OK", ResponseType::Accept),
+                ("Cancel", ResponseType::Cancel),
+            ],
+        );
+        file_chooser.set_modal(true);
+
+        file_chooser.run_async(clone!(@weak file_chooser,@weak drawing_area_loaded_image => move |x,y| {
+                if y == ResponseType::Accept{
+                    let file_path = &file_chooser.file().unwrap().path().unwrap();
+                    let file_path_os = file_path.as_os_str().to_string_lossy();
+                    let file_path_string = file_path_os.to_string();
+                    println!("File accepted: {}",&file_path_os);
+                    WindowsApp::load_image_to_drawing_area(file_path_string, &drawing_area_loaded_image, app_state, true);
+                    file_chooser.close();
+                }
+                else if y == ResponseType::Cancel{
+                    println!("Image load canceled");
+                    file_chooser.close();
+                }
+            }));
+    }
+
     pub fn load_image_to_drawing_area(
         filepath: String,
         drawing_area_loaded_image: &gtk::DrawingArea,
         app_state: Rc<RefCell<AppState>>,
+        force_resize: bool,
     ) {
         let mut pixbuf_loaded = false;
         let original_pixbuf = gdk::gdk_pixbuf::Pixbuf::from_file(filepath);
@@ -357,7 +398,14 @@ impl WindowsApp {
             Ok(pixbuf) => {
                 pixbuf_loaded = true;
                 println!("Image loaded successfully");
-                Some(pixbuf) //.scale_simple(768, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
+                if force_resize {
+                    let ref_pixbuf = pixbuf
+                        .scale_simple(512, 768, gdk::gdk_pixbuf::InterpType::Bilinear)
+                        .unwrap();
+                    Some(ref_pixbuf)
+                } else {
+                    Some(pixbuf)
+                }
             }
             Err(_) => {
                 // Handle the case when the Pixbuf fails to load
@@ -372,11 +420,32 @@ impl WindowsApp {
         let image_size = (resized_pixbuf.width(), resized_pixbuf.height()); //we dont want the app size here, we want to get the image size since thats what were loading...app_state.borrow_mut().image_size;
 
         drawing_area_loaded_image.set_size_request(image_size.0, image_size.1);
+
+        //when we force resize, were assuming its going on the left drawing area
+        //because why would we force a resize unless we want to fit it on our palleette
+        //fix it later, just a note
+        if force_resize==true {
+            if let Some(surface) = &app_state.borrow_mut().surface {
+                let crp = Context::new(surface).unwrap();
+                println!("Set draw function to pixbuf");
+                crp.set_source_rgb(1.0, 1.0, 1.0); // Set background color
+                crp.paint().unwrap();
+                if pixbuf_loaded {
+                    crp.set_source_pixbuf(&resized_pixbuf, 0.0, 0.0);
+                    crp.paint().unwrap();
+                } else {
+                    // Draw a placeholder or any other action you want to take
+                    crp.set_source_rgb(0.5, 0.5, 0.5);
+                    crp.rectangle(0.0, 0.0, 512.0, 768.0);
+                    crp.fill().unwrap();
+                }
+                crp.save().unwrap();
+            }
+        }else{
         drawing_area_loaded_image.set_draw_func(
-            clone!(@strong app_state => move |drawing_area_image, cr, width, height| {
+            clone!(@weak app_state => move |drawing_area_image, cr, width, height| {
                 // Use AppState's surface
-                if let Some(surface) = &app_state.borrow().surface {
-                    println!("Set draw function to pixbuf");
+                println!("Set draw function to pixbuf");
                 cr.set_source_rgb(1.0, 1.0, 1.0); // Set background color
                 cr.paint().unwrap();
 
@@ -388,11 +457,13 @@ impl WindowsApp {
                     cr.set_source_rgb(0.5, 0.5, 0.5);
                     cr.rectangle(0.0, 0.0, 768.0, 768.0);
                     cr.fill().unwrap();
-                }
-                }
-            }),
-        );
 
+                }
+                cr.save().unwrap();
+            }),
+
+        );
+    }
         drawing_area_loaded_image.connect_realize(
             clone!(@weak drawing_area_loaded_image, @weak app_state => move |_| {
                 println!("Drawing area connected shown");
@@ -401,6 +472,8 @@ impl WindowsApp {
                 drawing_area_loaded_image.queue_draw();
             }),
         );
+
+        drawing_area_loaded_image.queue_draw();
     }
 
     fn create_container_append_widgets(
