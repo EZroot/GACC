@@ -1,4 +1,4 @@
-from loaders.ai_generator import request_generate_image_openpose, request_generate_image_stablediffusion
+from loaders.ai_generator import request_generate_image_lineart, request_generate_image_openpose, request_generate_image_stablediffusion
 from loaders.ai_model_selection import get_ai_model
 from loaders.ai_initializer import generate_image_controlnet_inpaint, generate_image_controlnet_open_pose, generate_image_stablediffusion, initialize_controlnet_pipeline, initialize_diffusion_pipeline
 from quart import Quart, jsonify, request
@@ -17,8 +17,9 @@ else:
 @app.route(ai_model.route)
 async def generate_image_endpoint():
     args = request.args
+    print(f"Args: {args}")
     if use_control_net:
-        response = request_generate_image_openpose(pipe, args)
+        response = request_generate_image_lineart(pipe, args)
     else:
         response = request_generate_image_stablediffusion(pipe, args)
     return response

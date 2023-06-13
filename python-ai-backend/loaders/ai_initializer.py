@@ -4,7 +4,7 @@ import numpy as np
 from utils.imageutils import save_file
 import torch
 from PIL import Image
-from controlnet_aux import OpenposeDetector
+from controlnet_aux import OpenposeDetector, LineartAnimeDetector
 
 
 def initialize_controlnet_pipeline(controlnet_model_id, diffuser_model_id, useinpainting, use_cpu_offloading=False):
@@ -74,6 +74,23 @@ def generate_image_controlnet_inpaint(pipe, generator, init_image, mask_image, c
         mask_image=mask_image,
         control_image=control_image,
     ).images[0]
+    return image
+
+def generate_image_controlnet_lineart(pipe, generator, lineart_image_filepath, prompt, negative_prompt, num_inference_steps):
+    print(f"Attempting to load {lineart_image_filepath}")
+    lineart_image = Image.open(lineart_image_filepath)
+    print(f"Done...\n Loading processor: Anime Lineart")
+    processor = LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
+    print(f"Done...\n Processing image...")
+    processed_image = processor(lineart_image)
+    image = pipe(
+        prompt,
+        image=processed_image,
+        negative_prompt=negative_prompt,
+        num_inference_steps=num_inference_steps,
+        generator=generator,
+    ).images[0]
+    print(f"Done...")
     return image
 
 def generate_image_controlnet_open_pose(pipe, image_filepath, prompt, generator, negative_prompt, num_inference_steps):

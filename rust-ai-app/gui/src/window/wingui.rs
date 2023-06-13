@@ -115,28 +115,41 @@ impl WindowsApp {
         //let answer = question_dialog.choose_future(Some(&*window)).await;
 
         question_dialog.show();
-        
-            let app_state_clone = app_state.clone();
 
-            let img_size = app_state_clone.borrow().image_size;
+        let app_state_clone = app_state.clone();
 
+        let img_size = app_state_clone.borrow().image_size;
+
+        if let Some(surface) = &app_state.borrow_mut().surface {
             let mut image_surface =
                 cairo::ImageSurface::create(cairo::Format::ARgb32, img_size.0, img_size.1).unwrap();
+            {
+                let cr = cairo::Context::new(&image_surface).unwrap();
+                cr.set_source_surface(surface, 0.0, 0.0).unwrap();
+                cr.paint().unwrap();
+                cr.save().unwrap();
+            }
             let pixel_data: Vec<u8> = image_surface.data().unwrap().to_vec(); //cairo::ImageSurface::data(&mut image_surface).unwrap().to_vec();
             let bytes = glib::Bytes::from(&pixel_data);
+            
+            let width = img_size.0;
+            let channels = 4; // 3 for RGB, 4 for RGBA
+            let bytes_per_channel = 1; // 1 byte per channel for 8 bits per channel
+            let bytes_per_pixel = channels * bytes_per_channel;
+            let rowstride = bytes_per_pixel * width;
             let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
                 &bytes,
                 gdk_pixbuf::Colorspace::Rgb,
                 true,
                 8,
-                img_size.0,
+                width,
                 img_size.1,
-                8 as i32,
+                rowstride,
             );
 
             pixbuf.savev("testpic.png", "png", &[]).unwrap();
         }
-    
+    }
 
     fn create_prompt_bar(
         &self,
@@ -228,7 +241,7 @@ impl WindowsApp {
             println!("Generating image... {}", &prompt);
             let app_state_clone2 = Rc::clone(&app_state_clone);
             rt.block_on(async move {
-                match AIRequestor::send_ai_prompt_request(&prompt, img_count, img_size.0, img_size.1).await {
+                match AIRequestor::send_ai_prompt_request(&prompt, img_count, img_size.0, img_size.1, "/mnt/c/Repos/ultimate-ai-assistant/rust-ai-app/gui/testpic.png").await {
                     Ok(response) => {
                         println!("Response: {}", response);
                         let res: Response = serde_json::from_str(&response).unwrap();

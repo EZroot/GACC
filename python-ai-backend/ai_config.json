@@ -9,12 +9,12 @@
         },
         {
           "model": "lllyasviel/control_v11p_sd15s2_lineart_anime",
-          "useInpainting": true,
+          "useInpainting": false,
           "route": "/lineartanime"
         },
         {
           "model": "lllyasviel/control_v11p_sd15s2_lineart",
-          "useInpainting": true,
+          "useInpainting": false,
           "route": "/lineart"
         },
         {
