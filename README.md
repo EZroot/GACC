@@ -1,5 +1,8 @@
-# GIACC
-## Generate Images, Art, Code, and Conversations
+# GIACC - Generate Images, Art, Code, and Conversations
+A collection of:
+* Backend AI Server - Python AI backend server
+* Windows App - 2D Image generator and editor
+* Command Line Interface - Copilot Code generation
 Below you will find the current modules I'm working on for this AI package. 
 ## Picasso - 2D Image Generation AI
 A small collection of image editing tools with access to AI generation.
