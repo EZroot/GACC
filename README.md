@@ -1,6 +1,21 @@
 # ultimate-ai-assistant
 The ultimate AI assitant
 
+[Rust App]
+Pico Picasso - Image editor + AI Gen
+* Draw and generate
+* Regenerate images
+* Edit images and regenerate regions
+![Pico Picasso](https://cdn.discordapp.com/attachments/1051535103223930984/1118021969200296016/image.png)
+![Pico Picasso](https://cdn.discordapp.com/attachments/1112415182975676497/1118063562926071808/image.png)
+
+[Copilot]
+Copilot - Code Generation AI
+* automatically generates syntax passing files
+* usage  ```./copilot -pycode generate a file to do something```
+
+requires mypy and some other setup.
+
 use a python virtual environment or conda to deal with systemwide pips from windows interefereing from running your ai applications
 python -m will use a particular pythons pip, so you can download linux one and isolate it to linux pythons pip
 
