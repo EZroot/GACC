@@ -5,7 +5,7 @@ A collection of:
 * Command Line Interface - Copilot Code generation
 Below you will find the current modules I'm working on for this AI package. 
 ## Picasso - 2D Image Generation AI
-A small collection of image editing tools with access to AI generation.
+An image editing app with access to AI generation.
 * Generate completely new art based on the latest AI models
 * Draw images and quickly turn them professional with AI generation tools
 * Regenerate, stylize, remove or add new objects to your images
