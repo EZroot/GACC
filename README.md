@@ -1,4 +1,4 @@
-# GIACC - Generate Images, Art, Code, and Conversations
+# GACC - Generate Art, Code, and Conversations
 A collection of:
 * Backend AI Server - Python AI backend server
 * Windows App - 2D Image generator and editor
