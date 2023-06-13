@@ -76,6 +76,20 @@ def generate_image_controlnet_inpaint(pipe, generator, init_image, mask_image, c
     ).images[0]
     return image
 
+def generate_image_controlnet_pic2pic(pipe, generator, pic2pic_image_filepath, prompt, negative_prompt, num_inference_steps):
+    print(f"Attempting to load {pic2pic_image_filepath}")
+    pic2pic_image = Image.open(pic2pic_image_filepath)
+    print(f"Done...\n Processing image...")
+    image = pipe(
+        prompt,
+        image=pic2pic_image,
+        negative_prompt=negative_prompt,
+        num_inference_steps=num_inference_steps,
+        generator=generator,
+    ).images[0]
+    print(f"Done...")
+    return image
+
 def generate_image_controlnet_lineart(pipe, generator, lineart_image_filepath, prompt, negative_prompt, num_inference_steps):
     print(f"Attempting to load {lineart_image_filepath}")
     lineart_image = Image.open(lineart_image_filepath)

@@ -19,7 +19,7 @@ fn main() {
         .flags(ApplicationFlags::empty())
         .build();
 
-    let windows_gui_app = WindowsApp::new("Pico Picasso".to_string(), (1280,768), true, true);
+    let windows_gui_app = WindowsApp::new("Picasso".to_string(), (1280,768), true, true);
 
     application.connect_activate(move |app| {
         // Create a Tokio runtime

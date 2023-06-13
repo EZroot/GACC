@@ -138,10 +138,29 @@ impl WindowsApp {
                 cr.save().unwrap();
             }
             let pixel_data: Vec<u8> = image_surface.data().unwrap().to_vec(); //cairo::ImageSurface::data(&mut image_surface).unwrap().to_vec();
-            let bytes = glib::Bytes::from(&pixel_data);
+
+// Create a new Vec<u8> to store the RGB pixel data
+let mut rgb_pixel_data = Vec::with_capacity(pixel_data.len());
+
+// Iterate over each pixel (3 channels per pixel)
+for i in (0..pixel_data.len()).step_by(4) {
+    // Read the BGR values
+    let blue = pixel_data[i];
+    let green = pixel_data[i + 1];
+    let red = pixel_data[i + 2];
+    let alpha = pixel_data[i + 3];
+
+    // Convert to RGB by swapping the blue and red values
+    rgb_pixel_data.push(red);
+    rgb_pixel_data.push(green);
+    rgb_pixel_data.push(blue);
+    rgb_pixel_data.push(alpha);
+
+}
+let bytes = glib::Bytes::from(&rgb_pixel_data);
 
             let width = img_size.0;
-            let channels = 4; // 3 for RGB, 4 for RGBA
+            let channels = 3; // 3 for RGB, 4 for RGBA
             let bytes_per_channel = 1; // 1 byte per channel for 8 bits per channel
             let bytes_per_pixel = channels * bytes_per_channel;
             let rowstride = bytes_per_pixel * width;
@@ -152,7 +171,7 @@ impl WindowsApp {
                 8,
                 width,
                 img_size.1,
-                rowstride,
+                512*4,
             );
 
             pixbuf.savev("testpic.png", "png", &[]).unwrap();

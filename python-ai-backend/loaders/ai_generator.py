@@ -1,6 +1,6 @@
 import os
 import torch
-from loaders.ai_initializer import generate_image_controlnet_lineart, generate_image_controlnet_open_pose, generate_image_stablediffusion
+from loaders.ai_initializer import generate_image_controlnet_lineart, generate_image_controlnet_open_pose, generate_image_controlnet_pic2pic, generate_image_stablediffusion
 from utils.imageutils import save_file
 from utils.imageutils import image_grid
 from quart import Quart, jsonify, request
@@ -40,7 +40,7 @@ def request_generate_image_stablediffusion(pipe, request_args):
     filename = save_file(grid, prompt)
     return jsonify({'image_path': os.path.abspath(filename)})
 
-def request_generate_image_openpose(pipe, request_args):
+def request_generate_image_pic2pic(pipe, request_args):
     prompt = request_args.get('prompt', default='a photo of a banana on a pyramid', type=str)
     negative_prompt = request_args.get('negative_prompt', default='cropped, lowres, poorly drawn face, out of frame, poorly drawn hands, blurry, bad art, blurred, text, watermark, disfigured, deformed, closed eyes', type=str)
     filepath_pose = request_args.get('filepath', default='derp.png', type=str)
@@ -52,7 +52,7 @@ def request_generate_image_openpose(pipe, request_args):
     results = []
     for i in range(num_images):
         generator = torch.cuda.seed()
-        image = generate_image_controlnet_open_pose(pipe, filepath_pose, prompt, generator, negative_prompt, num_inference_steps)
+        image = generate_image_controlnet_pic2pic(pipe, generator, filepath_pose, prompt, negative_prompt, num_inference_steps)
         results.append(image)
         torch.cuda.empty_cache()  # Clear CUDA cache to release GPU memory
 
