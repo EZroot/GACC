@@ -1,18 +1,20 @@
-# ultimate-ai-assistant
-The ultimate AI assitant
-
-[Rust App]
-Pico Picasso - Image editor + AI Gen
-* Draw and generate
-* Regenerate images
-* Edit images and regenerate regions
-![Pico Picasso](https://cdn.discordapp.com/attachments/1051535103223930984/1118021969200296016/image.png)
-![Pico Picasso](https://cdn.discordapp.com/attachments/1112415182975676497/1118063562926071808/image.png)
-
-[Copilot]
-Copilot - Code Generation AI
-* automatically generates syntax passing files
+# GIACC
+## Generate Images, Art, Code, and Conversations
+Below you will find the current modules I'm working on for this AI package. 
+## Picasso - 2D Image Generation AI
+A small collection of image editing tools with access to AI generation.
+* Generate completely new art based on the latest AI models
+* Draw images and quickly turn them professional with AI generation tools
+* Regenerate, stylize, remove or add new objects to your images
+![Pico Picasso](https://github.com/EZroot/GAID/blob/master/showcase.png?raw=true)
+## Copilot - Code Generation AI
+* Automatically generate syntax passing files
 * usage  ```./copilot -pycode generate a file to do something```
+
+> Supports python only for now.
+
+## Converse - Text Generation AI
+* TODO
 
 requires mypy and some other setup.
 
