@@ -42,10 +42,32 @@
         "dreamlike-art/dreamlike-photoreal-2.0",
         "hakurei/waifu-diffusion",
         "SG161222/Realistic_Vision_V1.4",
+        "SG161222/Realistic_Vision_V2.0",
+        "SG161222/Paragon_V1.0",
         "Lykon/NeverEnding-Dream",
         "prompthero/openjourney-v4",
         "dreamlike-art/dreamlike-anime-1.0",
-        "Envvi/Inkpunk-Diffusion"
+        "Envvi/Inkpunk-Diffusion",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/darkSushiMixMix_225D.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/CheckpointYesmix_v20.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/colorful_v31.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/elldrethsStolendreams_stolenDreams.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/revAnimated_v122.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/dreadV4_.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/dreamshaper_631BakedVae.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/experience_80.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/fantasticchixHR_v10Fp16NoEma.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/glow25D_v10.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/majicmixHorror_v1.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/majicmixRealistic_v6.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/pornmasterAmateur_fullV3-inpainting.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/rundiffusionFX25D_v10.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/seekArtMEGA_mega20.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/subredditV3_39423.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/theAllysMixIII_v10.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors"        
       ]
     }
   }

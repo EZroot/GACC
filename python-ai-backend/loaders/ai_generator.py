@@ -5,15 +5,15 @@ from utils.imageutils import save_file
 from utils.imageutils import image_grid
 from quart import Quart, jsonify, request
 
-def request_generate_image_stablediffusion(pipe, request_args):
+def request_generate_image_stablediffusion(upscaler, pipe, request_args):
     prompt = request_args.get('prompt', default='a photo of a banana on a pyramid', type=str)
     height = int(request_args.get('height', default=768, type=int))
     width = int(request_args.get('width', default=768, type=int))
     num_inference_steps = int(request_args.get('num_inference_steps', default=50, type=int))
     img_count = int(request_args.get('img_count', default=1, type=int))
     use_columns = bool(request_args.get('use_columns', default=True, type=bool))
-    negative_prompt = request_args.get('negative_prompt', default='cropped, lowres, poorly drawn face, out of frame, poorly drawn hands, blurry, bad art, blurred, text, watermark, disfigured, deformed, closed eyes', type=str)
-
+    negative_prompt = request_args.get('negative_prompt', default='deformed iris, deformed pupils, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, duplicate, amputation, easynegative, negative_hand', type=str)
+#deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation, easynegative, bad-hands-5
        # Logging the received values for debugging
     print("Received values:")
     print("prompt:", prompt)
@@ -25,7 +25,7 @@ def request_generate_image_stablediffusion(pipe, request_args):
     results = []
     for i in range(num_images):
         generator = torch.cuda.seed()
-        image = generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height, width, num_inference_steps)
+        image = generate_image_stablediffusion(upscaler, pipe, prompt, negative_prompt, generator, height, width, num_inference_steps)
         results.append(image)
         torch.cuda.empty_cache()  # Clear CUDA cache to release GPU memory
 

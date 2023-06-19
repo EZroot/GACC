@@ -15,13 +15,13 @@ use gtk::{gdk, glib, graphene, gsk, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICA
 use gtk::{prelude::*, ProgressBar};
 use gtk::gdk_pixbuf::Pixbuf;
 
-use crate::window::appstates::AppState;
+use super::appstate::AppState;
 
 pub struct Gestures {}
 
 impl Gestures {
     pub fn clear_surface(app_state: &AppState,color: (f64,f64,f64)) {
-        if let Some(surface) = &app_state.surface {
+        if let Some(surface) = &app_state.left_drawing_surface {
             let cr = Context::new(surface).unwrap();
             cr.set_source_rgba(color.0, color.1, color.2, 1.0);
             cr.paint().unwrap();
@@ -35,7 +35,7 @@ impl Gestures {
         app_state: &Rc<RefCell<AppState>>,
         color: (f64,f64,f64)
     ) {
-        if let Some(surface) = &app_state.borrow().surface {
+        if let Some(surface) = &app_state.borrow().left_drawing_surface {
             let cr = Context::new(surface).unwrap();
             cr.rectangle(x - 2.0, y - 2.0, 4.0, 4.0);
             cr.set_source_rgba(color.0, color.1, color.2, 1.0);

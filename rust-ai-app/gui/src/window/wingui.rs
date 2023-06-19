@@ -69,10 +69,6 @@ impl WindowsApp {
         let save_button = gtk::Button::builder().label("Save").build();
         save_button.connect_clicked(clone!(@weak app_state, @weak drawing_area => move |_| { WindowsApp::save_drawing_area_as_image(app_state, drawing_area); }));
 
-        let window_ref = window.clone();
-        let load_button = gtk::Button::builder().label("Load Drawing").build();
-        load_button.connect_clicked(clone!(@weak app_state, @weak drawing_area => move |_| { WindowsApp::select_image_to_load_in_drawing_area(&drawing_area, app_state, &window_ref); }));
-
         let drawing_area_loaded_image = self.create_drawing_area(app_state.clone(), drawing_size);
         let image_filepath = "C:/Repos/ultimate-ai-assistant/python-ai-backend/gen_pics/2ebcff9bd6ddc2176342fcbe4dca0d1ce369bdba7c2f50ed8ab40ea21231ea0c.png".to_string();
         WindowsApp::load_image_to_drawing_area(
@@ -81,6 +77,20 @@ impl WindowsApp {
             app_state.clone(),
             false,
         );
+
+        let window_ref = window.clone();
+        let load_button = gtk::Button::builder().label("Load Drawing").build();
+        load_button.connect_clicked(clone!(@weak app_state, @weak drawing_area, @weak drawing_area_loaded_image => move |_| { 
+             if(app_state.borrow().load_image_as_mask){
+                let app_state_clone = app_state.clone();
+                 WindowsApp::select_image_to_load_in_drawing_area(&drawing_area_loaded_image, app_state, &window_ref); 
+                 //Gestures::clear_surface(&app_state_clone.borrow(), (0.0,0.0,0.0));
+                 //drawing_area.queue_draw();
+            }
+            else{
+            WindowsApp::select_image_to_load_in_drawing_area(&drawing_area, app_state, &window_ref); 
+            }
+        }));
 
         let prompt_bar = self.create_prompt_bar(&window, app_state.clone());
         let generate_image_button =
@@ -171,7 +181,7 @@ let bytes = glib::Bytes::from(&rgb_pixel_data);
                 8,
                 width,
                 img_size.1,
-                512*4,
+                width*4,
             );
 
             pixbuf.savev("testpic.png", "png", &[]).unwrap();
@@ -310,7 +320,7 @@ let bytes = glib::Bytes::from(&rgb_pixel_data);
         );
         drawing_area.connect_realize(clone!(@weak drawing_area, @weak app_state => move |_| {
             println!("Drawing area connected shown");
-        Gestures::pressed(size.0 as f64,size.1 as f64,&drawing_area, &app_state);
+        Gestures::pressed(size.0 as f64,size.1 as f64,&drawing_area, &app_state, (1.0,1.0,1.0));
         drawing_area.queue_draw();
         }));
 
@@ -322,16 +332,29 @@ let bytes = glib::Bytes::from(&rgb_pixel_data);
         drawing_area: &gtk::DrawingArea,
         app_state: Rc<RefCell<AppState>>,
     ) {
-        let drag = gtk::GestureDrag::new();
-        drag.set_button(1);
+        let drag_left = gtk::GestureDrag::new();
+        drag_left.set_button(1);
 
-        drag.connect_drag_begin(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+        drag_left.connect_drag_begin(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
             Gestures::drag_begin( x, y, &drawing_area, &app_state);
         }));
-        drag.connect_drag_update(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
-            Gestures::drag_update( x, y, &drawing_area, &app_state);
+        drag_left.connect_drag_update(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+            Gestures::drag_update( x, y, &drawing_area, &app_state, (0.0,0.0,0.0));
         }));
-        drag.connect_drag_end(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+        drag_left.connect_drag_end(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+                //draw_brush( &drawing_area, x, y,  &app_state);
+        }));
+
+        let drag_right = gtk::GestureDrag::new();
+        drag_right.set_button(3);
+
+        drag_right.connect_drag_begin(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+            Gestures::drag_begin( x, y, &drawing_area, &app_state);
+        }));
+        drag_right.connect_drag_update(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
+            Gestures::drag_update( x, y, &drawing_area, &app_state, (1.0,1.0,1.0));
+        }));
+        drag_right.connect_drag_end(clone!(@weak drawing_area,@weak app_state => move |_, x,y| {
                 //draw_brush( &drawing_area, x, y,  &app_state);
         }));
 
@@ -340,12 +363,13 @@ let bytes = glib::Bytes::from(&rgb_pixel_data);
 
         press.connect_pressed(
             clone!(@weak drawing_area,@weak app_state => move |gesture, button, x, y| {
-                Gestures::pressed(x as f64,y as f64,&drawing_area, &app_state);
+                Gestures::pressed(x as f64,y as f64,&drawing_area, &app_state, (1.0,1.0,1.0));
             }),
         );
 
         drawing_area.add_controller(press);
-        drawing_area.add_controller(drag);
+        drawing_area.add_controller(drag_left);
+        drawing_area.add_controller(drag_right);
     }
 
     fn create_progress_bar_container(&self) -> gtk::Box {
@@ -487,7 +511,7 @@ let bytes = glib::Bytes::from(&rgb_pixel_data);
             clone!(@weak drawing_area_loaded_image, @weak app_state => move |_| {
                 println!("Drawing area connected shown");
                 let image_size = app_state.borrow_mut().image_size;
-                Gestures::pressed(image_size.0 as f64,image_size.1 as f64,&drawing_area_loaded_image, &app_state);
+                Gestures::pressed(image_size.0 as f64,image_size.1 as f64,&drawing_area_loaded_image, &app_state, (1.0,1.0,1.0));
                 drawing_area_loaded_image.queue_draw();
             }),
         );
