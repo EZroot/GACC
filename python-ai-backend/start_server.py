@@ -13,7 +13,7 @@ if ai_model.controlnet_model_id != None:
     pipe = initialize_controlnet_pipeline(ai_model.controlnet_model_id, ai_model.diffusion_model_id, ai_model.useinpainting)
     use_control_net = True
 else:
-    upscaler,pipe = initialize_diffusion_pipeline(ai_model.diffusion_model_id)
+    pipe = initialize_diffusion_pipeline(ai_model.diffusion_model_id)
     use_control_net = False
 
 @app.route(ai_model.route)
@@ -24,7 +24,7 @@ async def generate_image_endpoint():
         response = request_generate_image_pic2pic(pipe,args)
         #response = request_generate_image_lineart(pipe, args)
     else:
-        response = request_generate_image_stablediffusion(upscaler, pipe, args)
+        response = request_generate_image_stablediffusion(pipe, args)
     return response
 
 @app.route("/aimodel")
