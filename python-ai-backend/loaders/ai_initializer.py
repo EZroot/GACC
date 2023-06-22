@@ -9,6 +9,9 @@ from controlnet_aux import OpenposeDetector, LineartAnimeDetector
 from scipy.ndimage import gaussian_filter
 import random
 from scipy.cluster.vq import kmeans
+from joblib import Parallel, delayed
+import os
+from scipy.ndimage.filters import gaussian_filter
 
 def initialize_controlnet_pipeline(controlnet_model_id, diffuser_model_id, useinpainting, use_cpu_offloading=False):
 
@@ -93,10 +96,10 @@ def initialize_diffusion_pipeline(diffuser_model_id, use_cpu_offloading=False):
 
     print("Attempting to load lora weights [easynegative]")
     pipe.load_textual_inversion("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="easynegative.safetensors")
-    print("Done... \n Attempting to load lora weights [wowifierV3]")
-    pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="wowifierV3.safetensors")
-    print("Done... \n Attempting to load lora weights [more_details]")
-    pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="more_details.safetensors")
+    #print("Done... \n Attempting to load lora weights [wowifierV3]")
+    #pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="wowifierV3.safetensors")
+    #print("Done... \n Attempting to load lora weights [more_details]")
+    #pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="more_details.safetensors")
     # print("Done... \n Attempting to load lora weights [ElementalMagicAIv2-000008]")
     # pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="ElementalMagicAIv2-000008.safetensors")
     # print("Done... \n Attempting to load lora weights [GamerFashion-rgb-V1]")
@@ -116,9 +119,9 @@ def initialize_diffusion_pipeline(diffuser_model_id, use_cpu_offloading=False):
 
     return pipe
 
-def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height, width, num_inference_steps,first_image_strength, resized_image_strength, first_image_noise,resized_image_noise):
+def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height, width, num_inference_steps,first_image_strength, resized_image_strength, chunk_size,blur_radius,edge_radius, upscaled_size):
     image_ref = create_blank_image(width,height,(255,255,255))
-    image_ref = add_noise_to_image(image_ref,first_image_noise)
+    image_ref = add_noise_to_image(image_ref,500)
     image = pipe(
         prompt,
         negative_prompt=negative_prompt,
@@ -128,7 +131,7 @@ def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, hei
         image=image_ref
     ).images[0]
     print("Resizing to 1024x1024")
-    image_ref = resize(image,resized_image_noise)
+    image_ref = resize(image,upscaled_size,chunk_size,blur_radius,edge_radius)
     print("Clearing GPU cache...")
     torch.cuda.empty_cache()
     image = pipe(
@@ -300,28 +303,29 @@ def add_noise_to_image(image, noise_scale=25):
     noisy_pil_image.save("./noise_added_to_blank.png")
     return noisy_pil_image
 
-def resize(image, noise):
+def resize(image,upscaled_size, chunk_size=40, blur_radius=10, blur_radius_edge=6):
     # Create a new image with the size 1024x1024
     #new_image = Image.new("RGB", (1344, 1344),(255,255,255))
     scaled_image = image.copy()
     scaled_image.resize((64,64))
     print("Extracting colors...")
     palette = extract_color_palette(scaled_image)
-    print("Done...\n Generating random noise image (1344x1344)...")
-    new_image = generate_random_noise_image((512,512), palette, 2) #scramble_colors_to_noise(image,1344,1344,noise) # add_noise_to_image_from_image(image, new_image,noise)
-    new_image = new_image.resize((1344,1344))
-    # Calculate the position to paste the image in the center
-    position = ((1344 - image.width) // 2, (1344 - image.height) // 2)
 
-    nw,nh = image.size
-    print("Done...\n Scrambling the noise of the original a bit...")
-    blurred_edge_image = scramble_colors_to_noise(image,nw,nh, noise)
-    # Paste the image onto the new image
-    new_image.save("before_new_image.png")
-    new_image.paste(blurred_edge_image, position)
-    new_image.save("after_new_image.png")
+    # Generate random noise image using the extracted palette
+    size = image.size
+    random_image = generate_random_noise_image(size, palette, chunk_size,blur_radius)
+
+    # Display the random noise image
+    random_image.save("randomized.png")
+
+    # Upscale and paste the original image
+    upscaled_and_pasted_image = upscale_and_paste(random_image, image, blur_radius_edge, upscaled_size)
+
+    # Save the final image
+    upscaled_and_pasted_image.save("final_image.png")
+
     # Return the resulting image
-    return new_image
+    return upscaled_and_pasted_image
 
 def add_edge_noise(image, blur_radius, noise_scale):
     # Apply a Gaussian blur to the image
@@ -351,27 +355,43 @@ def extract_color_palette(image: Image.Image, num_colors: int = 256) -> list:
     # Normalize RGB values
     pixels = image_array.reshape(-1, 3) / 255.0
 
-    # Perform k-means clustering to extract the dominant colors
-    centroids, _ = kmeans(pixels, num_colors)
+    def compute_kmeans(pixels, num_colors):
+        # Perform k-means clustering to extract the dominant colors
+        centroids, _ = kmeans(pixels, num_colors)
+        return (centroids * 255.0).astype(int).tolist()
 
-    # Create the color palette using the centroid values
-    palette = (centroids * 255.0).astype(int).tolist()
+    # Split the pixels into chunks for parallel processing
+    num_pixels = pixels.shape[0]
+    chunk_size = num_pixels // num_colors
+    pixel_chunks = [pixels[i:i+chunk_size] for i in range(0, num_pixels, chunk_size)]
+
+    # Determine the number of threads based on the image size
+    num_threads = os.cpu_count()
+    if num_threads is None or num_threads < 1:
+        num_threads = 1
+
+    # Run k-means clustering in parallel
+    results = Parallel(n_jobs=num_threads)(delayed(compute_kmeans)(chunk, num_colors) for chunk in pixel_chunks)
+
+    # Concatenate the results from all chunks
+    palette = np.concatenate(results).tolist()
 
     return palette
 
 
-
-def generate_random_noise_image(size: tuple, palette: list, chunk_size: int) -> Image.Image:
+def generate_random_noise_image(size: tuple, palette: list, chunk_size: int, blur_radius: float) -> Image.Image:
     # Create a new image filled with random noise chunks using the color palette
     width, height = size
     num_colors = len(palette)
 
     # Calculate the number of chunks in each dimension
-    num_chunks_x = width // chunk_size
-    num_chunks_y = height // chunk_size
+    num_chunks_x = (width + chunk_size - 1) // chunk_size  # Round up the division
+    num_chunks_y = (height + chunk_size - 1) // chunk_size  # Round up the division
 
-    # Generate random noise chunks
-    random_chunks = np.random.choice(num_colors, size=(num_chunks_y, num_chunks_x))
+    # Generate random noise chunks with a Gaussian distribution
+    mean = num_colors // 2  # Mean value for Gaussian distribution
+    std = num_colors // 4  # Standard deviation for Gaussian distribution
+    random_chunks = np.random.normal(mean, std, size=(num_chunks_y, num_chunks_x)).astype(int)
 
     # Create an empty array for the final random noise image
     random_image_array = np.empty((height, width, 3), dtype=np.uint8)
@@ -379,10 +399,60 @@ def generate_random_noise_image(size: tuple, palette: list, chunk_size: int) -> 
     # Fill the random image array with random noise chunks
     for i in range(num_chunks_y):
         for j in range(num_chunks_x):
-            chunk_color_index = random_chunks[i, j]
+            chunk_color_index = random_chunks[i, j] % num_colors
             chunk_color = palette[chunk_color_index]
-            random_image_array[i * chunk_size: (i + 1) * chunk_size, j * chunk_size: (j + 1) * chunk_size] = chunk_color
+            x_start = j * chunk_size
+            y_start = i * chunk_size
+            x_end = min(x_start + chunk_size, width)
+            y_end = min(y_start + chunk_size, height)
+            random_image_array[y_start:y_end, x_start:x_end] = chunk_color
 
-    random_image = Image.fromarray(random_image_array, mode='RGB')
+    # Create a copy of the random image array for blurring
+    blurred_image_array = np.copy(random_image_array)
 
-    return random_image
+    # Apply Gaussian blur to each color channel separately
+    for c in range(3):
+        blurred_image_array[:, :, c] = gaussian_filter(blurred_image_array[:, :, c], sigma=blur_radius)
+
+    blurred_image = Image.fromarray(blurred_image_array, mode='RGB')
+
+    return blurred_image
+
+def upscale_and_paste(image: Image.Image, original_image: Image.Image, blur_radius: float, upscaled_size) -> Image.Image:
+    # Upscale the image to twice its size
+    new_width, new_height = upscaled_size
+    upscaled_image = image.resize((new_width, new_height), Image.BICUBIC)
+
+    # Calculate the coordinates to paste the original image in the center
+    paste_x = (upscaled_image.width - original_image.width) // 2
+    paste_y = (upscaled_image.height - original_image.height) // 2
+
+    # Create a blurred version of the original image
+    #blurred_image = original_image.filter(ImageFilter.GaussianBlur(blur_radius))
+
+    # Create edge masks for the top, bottom, left, and right edges
+    edge_mask = Image.new("L", original_image.size, 0)
+    edge_width = int(original_image.width * 0.1)  # Adjust the width ratio as desired
+    edge_height = int(original_image.height * 0.1)  # Adjust the height ratio as desired
+    edge_mask.paste(255, (0, 0, original_image.width, edge_height))  # Top edge
+    edge_mask.paste(255, (0, original_image.height - edge_height, original_image.width, original_image.height))  # Bottom edge
+    edge_mask.paste(255, (0, 0, edge_width, original_image.height))  # Left edge
+    edge_mask.paste(255, (original_image.width - edge_width, 0, original_image.width, original_image.height))  # Right edge
+
+    # Apply Gaussian blur to the edge masks
+    blurred_edge_mask = edge_mask.filter(ImageFilter.GaussianBlur(blur_radius))
+
+    # Invert the blurred edge masks
+    inverted_blurred_edge_mask = Image.eval(blurred_edge_mask, lambda x: 255 - x)
+
+    # Create a new image to hold the final result
+    final_image = Image.new("RGB", upscaled_image.size)
+
+    # Paste the upscaled image onto the final image
+    final_image.paste(upscaled_image, (0, 0))
+
+    # Paste the blurred image in the center
+    final_image.paste(original_image, (paste_x, paste_y), mask=inverted_blurred_edge_mask)
+
+    return final_image
+
