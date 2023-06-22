@@ -1,6 +1,6 @@
 import os
 import torch
-from loaders.ai_initializer import generate_image_controlnet_lineart, generate_image_controlnet_open_pose, generate_image_controlnet_pic2pic, generate_image_stablediffusion
+from loaders.ai_initializer import CustomImageFilter,generate_image_controlnet_lineart, generate_image_controlnet_open_pose, generate_image_controlnet_pic2pic, generate_image_stablediffusion
 from utils.imageutils import save_file
 from utils.imageutils import image_grid
 from quart import Quart, jsonify, request
@@ -35,6 +35,15 @@ def request_generate_image_stablediffusion(pipe, request_args):
         'upscaled_size_width', default=512, type=int)
     upscaled_size_height = request_args.get(
         'upscaled_size_height', default=512, type=int)
+    
+    first_image_noise = request_args.get(
+        'first_image_noise', default=500, type=int)
+
+    image_filter_enum = request_args.get(
+        'image_filter_enum', default=1, type=int)
+    
+    upscale_original_bool = request_args.get(
+        'upscale_original_bool', default=False, type=bool)
 # deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation, easynegative, bad-hands-5
     # Logging the received values for debugging
     print("Received values:")
@@ -48,13 +57,17 @@ def request_generate_image_stablediffusion(pipe, request_args):
     print("chunk_size:", chunk_size)
     print("blur_radius:", blur_radius)
     print("edge_radius:", edge_radius)
+    print("first_image_noise:", first_image_noise)
+    print("image_filter_enum:", image_filter_enum)
+    print("upscale_original_bool:", upscale_original_bool)
 
+    image_filter_enum = CustomImageFilter(image_filter_enum)
     num_images = img_count
     results = []
     for i in range(num_images):
         generator = torch.cuda.seed()
         image = generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height, width, num_inference_steps,
-                                               first_image_strength, resized_image_strength, chunk_size, blur_radius, edge_radius, (upscaled_size_width,upscaled_size_height))
+                                               first_image_strength, resized_image_strength, chunk_size, blur_radius, edge_radius, (upscaled_size_width,upscaled_size_height), first_image_noise, image_filter_enum, upscale_original_bool)
         results.append(image)
         torch.cuda.empty_cache()  # Clear CUDA cache to release GPU memory
 

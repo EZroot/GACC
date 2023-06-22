@@ -12,6 +12,13 @@ from scipy.cluster.vq import kmeans
 from joblib import Parallel, delayed
 import os
 from scipy.ndimage.filters import gaussian_filter
+from enum import Enum
+
+class CustomImageFilter(Enum):
+    NO_FILTER = 0
+    RANDOM_NOISE = 1
+    GAUSSAIN_NOISE = 2
+    RANDOM_NOISE_FROM_PALLETTE = 3
 
 def initialize_controlnet_pipeline(controlnet_model_id, diffuser_model_id, useinpainting, use_cpu_offloading=False):
 
@@ -98,8 +105,8 @@ def initialize_diffusion_pipeline(diffuser_model_id, use_cpu_offloading=False):
     pipe.load_textual_inversion("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="easynegative.safetensors")
     #print("Done... \n Attempting to load lora weights [wowifierV3]")
     #pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="wowifierV3.safetensors")
-    #print("Done... \n Attempting to load lora weights [more_details]")
-    #pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="more_details.safetensors")
+    print("Done... \n Attempting to load lora weights [more_details]")
+    pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="more_details.safetensors")
     # print("Done... \n Attempting to load lora weights [ElementalMagicAIv2-000008]")
     # pipe.load_lora_weights("/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/loraweights/", weight_name="ElementalMagicAIv2-000008.safetensors")
     # print("Done... \n Attempting to load lora weights [GamerFashion-rgb-V1]")
@@ -119,9 +126,11 @@ def initialize_diffusion_pipeline(diffuser_model_id, use_cpu_offloading=False):
 
     return pipe
 
-def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height, width, num_inference_steps,first_image_strength, resized_image_strength, chunk_size,blur_radius,edge_radius, upscaled_size):
+def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, height,
+                                width, num_inference_steps,first_image_strength, resized_image_strength, 
+                                chunk_size,blur_radius,edge_radius, upscaled_size, first_image_noise, upscaled_image_filter_enum:CustomImageFilter, upscale_original:bool):
     image_ref = create_blank_image(width,height,(255,255,255))
-    image_ref = add_noise_to_image(image_ref,500)
+    image_ref = add_noise_to_image(image_ref,first_image_noise)
     image = pipe(
         prompt,
         negative_prompt=negative_prompt,
@@ -131,7 +140,7 @@ def generate_image_stablediffusion(pipe, prompt, negative_prompt, generator, hei
         image=image_ref
     ).images[0]
     print("Resizing to 1024x1024")
-    image_ref = resize(image,upscaled_size,chunk_size,blur_radius,edge_radius)
+    image_ref = resize(image,upscaled_size,upscaled_image_filter_enum, upscale_original, chunk_size,blur_radius,edge_radius)
     print("Clearing GPU cache...")
     torch.cuda.empty_cache()
     image = pipe(
@@ -303,23 +312,58 @@ def add_noise_to_image(image, noise_scale=25):
     noisy_pil_image.save("./noise_added_to_blank.png")
     return noisy_pil_image
 
-def resize(image,upscaled_size, chunk_size=40, blur_radius=10, blur_radius_edge=6):
+def resize(image,upscaled_size, upscaled_image_filter_enum:CustomImageFilter, upscale_original:bool, chunk_size=40, blur_radius=10, blur_radius_edge=6):
     # Create a new image with the size 1024x1024
     #new_image = Image.new("RGB", (1344, 1344),(255,255,255))
     scaled_image = image.copy()
     scaled_image.resize((64,64))
-    print("Extracting colors...")
-    palette = extract_color_palette(scaled_image)
+    if upscaled_image_filter_enum == CustomImageFilter.GAUSSAIN_NOISE:
+        print("GAUSSAIN_NOISE FILTER ACTIVATED")
+        print("Extracting colors...")
+        palette = extract_color_palette(scaled_image)
 
-    # Generate random noise image using the extracted palette
-    size = image.size
-    random_image = generate_random_noise_image(size, palette, chunk_size,blur_radius)
+        # Generate random noise image using the extracted palette
+        size = image.size
+        random_image = generate_random_noise_image(size, palette, chunk_size,blur_radius)
 
-    # Display the random noise image
-    random_image.save("randomized.png")
+        # Display the random noise image
+        random_image.save("randomized.png")
+    elif upscaled_image_filter_enum == CustomImageFilter.RANDOM_NOISE:
+        print("RANDOM_NOISE FILTER ACTIVATED")
+        print("Extracting colors...")
+        palette = extract_color_palette(scaled_image)
 
-    # Upscale and paste the original image
-    upscaled_and_pasted_image = upscale_and_paste(random_image, image, blur_radius_edge, upscaled_size)
+        # Generate random noise image using the extracted palette
+        size = image.size
+        random_image = add_noise_to_image(size, 500)
+
+        # Display the random noise image
+        random_image.save("randomized.png")
+    elif upscaled_image_filter_enum == CustomImageFilter.NO_FILTER:
+        print("NO FILTER ACTIVATED")
+        # Generate random noise image using the extracted palette
+        size = image.size
+        width, height = size
+        random_image = create_blank_image(width,height,(255,255,255))
+        # Display the random noise image
+        random_image.save("randomized.png")
+    elif upscaled_image_filter_enum == CustomImageFilter.RANDOM_NOISE_FROM_PALLETTE:
+        print("RANDOM_NOISE_FROM_PALLETTE FILTER ACTIVATED")
+        print("Extracting colors...")
+        palette = extract_color_palette(scaled_image)
+
+        # Generate random noise image using the extracted palette
+        size = image.size
+        random_image = generate_random_noise_image(size, palette, 1,0)
+
+        # Display the random noise image
+        random_image.save("randomized.png")
+
+    if upscale_original:
+        # Upscale and paste the original image
+        upscaled_and_pasted_image = upscale_and_paste(random_image, image, blur_radius_edge, upscaled_size, upscaled_size)
+    else:
+        upscaled_and_pasted_image = upscale_and_paste(random_image, image, blur_radius_edge, upscaled_size, image.size)
 
     # Save the final image
     upscaled_and_pasted_image.save("final_image.png")
@@ -418,8 +462,9 @@ def generate_random_noise_image(size: tuple, palette: list, chunk_size: int, blu
 
     return blurred_image
 
-def upscale_and_paste(image: Image.Image, original_image: Image.Image, blur_radius: float, upscaled_size) -> Image.Image:
+def upscale_and_paste(image: Image.Image, original_image: Image.Image, blur_radius: float, upscaled_size, original_upscaled_size) -> Image.Image:
     # Upscale the image to twice its size
+    original_image= original_image.resize(original_upscaled_size, Image.BICUBIC)
     new_width, new_height = upscaled_size
     upscaled_image = image.resize((new_width, new_height), Image.BICUBIC)
 
