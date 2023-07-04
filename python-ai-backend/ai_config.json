@@ -65,9 +65,14 @@
         "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/seekArtMEGA_mega20.safetensors",
         "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/subredditV3_39423.safetensors",
         "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/theAllysMixIII_v10.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/stokedReality_v12.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/forgottenmix_v10.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/epicrealism_pureEvolutionV2.safetensors",     
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/aZovyaPhotoreal_v2.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/illustro1stEdition_illustroV1.safetensors",
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/opiate_V20PrunedFp16.safetensors",        
         "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors",
-        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors",
-        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/abyssorangemix3AOM3_aom3a1b.safetensors"        
+        "/mnt/c/Repos/ultimate-ai-assistant/python-ai-backend/models/checkpoints/flat2DAnimerge_v20.safetensors"
       ]
     }
   }
